@@ -9,6 +9,7 @@ itsdangerous==2.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.2
 packaging==24.2
+psycopg2==2.9.10
 pycryptodome==3.21.0
 requests==2.32.3
 urllib3==2.3.0
