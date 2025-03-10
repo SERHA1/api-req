@@ -1,7 +1,9 @@
-import base64
+import os
 import json
 import time
-import requests  # Add this import to fix the error
+import base64
+import requests
+import psycopg2  # PostgreSQL connector
 from Crypto.Cipher import AES
 import hashlib
 import hmac
@@ -9,92 +11,87 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Secret key for encryption/decryption
-SECRET_KEY = b'940e357e181dbb8ac82e3b8ec9100746'
-CHECKSUM_SECRET_KEY = b'2799b549-16ad-4702-8910-1316e6b1389e'  # Use checksum secret key
+# Load environment variables
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback_key").encode()
+CHECKSUM_SECRET_KEY = os.getenv("CHECKSUM_SECRET_KEY", "fallback_checksum_key").encode()
+DATABASE_URL = os.getenv("DATABASE_URL")  # Render PostgreSQL database
 
-# Function to pad the data (PKCS#7 padding scheme)
-def pad(data):
-    block_size = 16
-    padding_needed = block_size - len(data) % block_size
-    padding = chr(padding_needed) * padding_needed
-    return data + padding
+# Connect to Render PostgreSQL
+conn = psycopg2.connect(DATABASE_URL)
+cur = conn.cursor()
 
-# Function to unpad the decrypted data (PKCS#7 padding scheme)
-def unpad(data):
-    padding_length = data[-1]  # Get the padding length (last byte of decrypted data)
-    return data[:-padding_length]  # Remove the padding bytes
+# Ensure table exists
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS used_keys (
+        id SERIAL PRIMARY KEY,
+        key TEXT UNIQUE NOT NULL,
+        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+""")
+conn.commit()
 
-# Function to decrypt the encrypted data
+# Function to check if key exists
+def is_key_used(key):
+    cur.execute("SELECT 1 FROM used_keys WHERE key = %s", (key,))
+    return cur.fetchone() is not None
+
+# Function to store used key
+def store_key(key):
+    cur.execute("INSERT INTO used_keys (key) VALUES (%s) ON CONFLICT DO NOTHING", (key,))
+    conn.commit()
+
+# Function to decrypt data
 def decrypt_data(encrypted_data, secret_key):
     encrypted_bytes = base64.urlsafe_b64decode(encrypted_data)
-    iv = encrypted_bytes[:16]  # Extract IV (first 16 bytes)
-    encrypted_data = encrypted_bytes[16:]  # Extract the actual encrypted data
-    
+    iv = encrypted_bytes[:16]
+    encrypted_data = encrypted_bytes[16:]
+
     cipher = AES.new(secret_key, AES.MODE_CBC, iv)
     decrypted_data = cipher.decrypt(encrypted_data)
-    
-    # Unpad the decrypted data and decode it as a string
-    decrypted_string = unpad(decrypted_data).decode('utf-8')  # Ensure it's correctly decoded after unpadding
-    
-    # Convert the decrypted string to a dictionary (assuming it's a valid JSON string)
-    return json.loads(decrypted_string)
 
-# Function to create checksum (HMAC-SHA512)
-def create_checksum(data, secret_key):
-    input_string = f"{data['partyId']},{data['brandId']},{data['bonusPlanID']},{data['amount']},{data['reason']},{data['timestamp']}"
-    hash = hmac.new(secret_key, input_string.encode(), hashlib.sha512)
-    checksum = base64.b64encode(hash.digest()).decode('utf-8')
-    return checksum
+    return json.loads(decrypted_data.decode('utf-8').rstrip("\x00"))
 
 @app.route('/webhook', methods=['GET'])
 def webhook():
-    """Webhook endpoint to receive encrypted data and send API request."""
     encrypted_data = request.args.get("data")
-    
+
     if not encrypted_data:
         return jsonify({"status": "error", "message": "Missing encrypted data"}), 400
 
-    # Decrypt the data from the URL using the secret key
     try:
         decrypted_data = decrypt_data(encrypted_data, SECRET_KEY)
     except Exception as e:
         return jsonify({"status": "error", "message": f"Decryption failed: {str(e)}"}), 400
 
-    # Create the JSON body with the decrypted data
+    user_id = decrypted_data["userId"]  # The key to track usage
+
+    # Check if key is already used
+    if is_key_used(user_id):
+        return jsonify({"status": "error", "message": "Key already used"}), 403  # Forbidden
+
+    # Store the key before processing
+    store_key(user_id)
+
+    # Prepare the API request
     json_body = {
-        "partyId": decrypted_data["userId"],  # Get partyId from decrypted data
-        "brandId": 23,  # Fixed value
-        "bonusPlanID": 14747,  # Fixed value
-        "amount": decrypted_data["amount"],  # Get amount from decrypted data
-        "reason": "test1",  # Fixed value
-        "timestamp": int(time.time() * 1000)  # Current timestamp in milliseconds
+        "partyId": user_id,
+        "brandId": 23,
+        "bonusPlanID": 14747,
+        "amount": decrypted_data["amount"],
+        "reason": "test1",
+        "timestamp": int(time.time() * 1000)
     }
 
-    # Create checksum header
-    checksum = create_checksum(json_body, CHECKSUM_SECRET_KEY)
+    checksum = hmac.new(CHECKSUM_SECRET_KEY, f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(), hashlib.sha512)
     
-    # Set headers
     headers = {
         'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
-        'Checksum': checksum
+        'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
     }
 
-    # API URL
-    api_url = "https://ps-secundus.gmntc.com/ips/bonus/trigger"
-    
-    # Send the POST request to the API
-    response = requests.post(api_url, json=json_body, headers=headers)
+    response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", json=json_body, headers=headers)
 
-    # Return the response from the API
-    return jsonify({
-        "status": "success",
-        "message": "Request sent to API",
-        "api_response": response.json()
-    })
+    return jsonify({"status": "success", "message": "Request sent to API", "api_response": response.json()})
 
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))  # Render uses PORT env variable
-    app.run(host="0.0.0.0", port=port)
-
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000, debug=True)
