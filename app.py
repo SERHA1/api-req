@@ -16,8 +16,26 @@ SECRET_KEY = os.getenv("SECRET_KEY", "fallback_key").encode()
 CHECKSUM_SECRET_KEY = os.getenv("CHECKSUM_SECRET_KEY", "fallback_checksum_key").encode()
 DATABASE_URL = os.getenv("DATABASE_URL")  # Render PostgreSQL database
 
-# Connect to Render PostgreSQL
-conn = psycopg2.connect(DATABASE_URL)
+if DATABASE_URL is None:
+    raise ValueError("DATABASE_URL is not set in the environment variables")
+
+# Parse the DATABASE_URL to extract the components
+url = urlparse(DATABASE_URL)
+
+# Connect to the PostgreSQL database
+try:
+    conn = psycopg2.connect(
+        database=url.path[1:],  # Extract the database name from the URL path (remove leading '/')
+        user=url.username,
+        password=url.password,
+        host=url.hostname,
+        port=url.port
+    )
+    print("Connected to the PostgreSQL database successfully!")
+except Exception as e:
+    print(f"Failed to connect to the database: {e}")
+
+# Create a cursor to interact with the database
 cur = conn.cursor()
 
 # Ensure table exists
