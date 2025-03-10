@@ -42,22 +42,22 @@ cur = conn.cursor()
 
 # Ensure table exists
 cur.execute("""
-    CREATE TABLE IF NOT EXISTS used_keys (
+    CREATE TABLE IF NOT EXISTS used_party_ids (
         id SERIAL PRIMARY KEY,
-        key TEXT UNIQUE NOT NULL,
-        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        party_id TEXT UNIQUE NOT NULL,
+        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 """)
 conn.commit()
 
-# Function to check if key exists
-def is_key_used(key):
-    cur.execute("SELECT 1 FROM used_keys WHERE key = %s", (key,))
+# Function to check if partyId already exists
+def is_party_id_used(party_id):
+    cur.execute("SELECT 1 FROM used_party_ids WHERE party_id = %s", (party_id,))
     return cur.fetchone() is not None
 
-# Function to store used key
-def store_key(key):
-    cur.execute("INSERT INTO used_keys (key) VALUES (%s) ON CONFLICT DO NOTHING", (key,))
+# Function to store partyId
+def store_party_id(party_id):
+    cur.execute("INSERT INTO used_party_ids (party_id) VALUES (%s) ON CONFLICT DO NOTHING", (party_id,))
     conn.commit()
 
 # Function to decrypt data
@@ -78,23 +78,26 @@ def webhook():
     if not encrypted_data:
         return jsonify({"status": "error", "message": "Missing encrypted data"}), 400
 
+    # Log the encrypted data to check what is being received
+    print(f"Received encrypted data: {encrypted_data}")
+    
     try:
         decrypted_data = decrypt_data(encrypted_data, SECRET_KEY)
     except Exception as e:
         return jsonify({"status": "error", "message": f"Decryption failed: {str(e)}"}), 400
 
-    user_id = decrypted_data["userId"]  # The key to track usage
+    party_id = decrypted_data["userId"]  # The key to track usage
 
-    # Check if key is already used
-    if is_key_used(user_id):
-        return jsonify({"status": "error", "message": "Key already used"}), 403  # Forbidden
+    # Check if partyId is already used
+    if is_party_id_used(party_id):
+        return jsonify({"status": "error", "message": "partyId already used, API request not sent"}), 403  # Forbidden
 
-    # Store the key before processing
-    store_key(user_id)
+    # Store the partyId in the database
+    store_party_id(party_id)
 
     # Prepare the API request
     json_body = {
-        "partyId": user_id,
+        "partyId": party_id,
         "brandId": 23,
         "bonusPlanID": 14747,
         "amount": decrypted_data["amount"],
