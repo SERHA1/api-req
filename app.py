@@ -8,6 +8,8 @@ from Crypto.Cipher import AES
 import hashlib
 import hmac
 from flask import Flask, request, jsonify
+from urllib.parse import urlparse  # Make sure to import urlparse
+
 
 app = Flask(__name__)
 
