@@ -45,45 +45,41 @@ cur.execute("""
     CREATE TABLE IF NOT EXISTS used_party_ids (
         id SERIAL PRIMARY KEY,
         party_id TEXT UNIQUE NOT NULL,
-        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 """)
 conn.commit()
 
-# Function to check if partyId already exists
+# Function to check if the party_id is already used
 def is_party_id_used(party_id):
-    cur.execute("SELECT 1 FROM used_party_ids WHERE party_id = %s", (party_id,))
+    cur.execute("SELECT 1 FROM used_party_ids WHERE party_id = %s", (str(party_id),))  # Cast party_id to string
     return cur.fetchone() is not None
 
-# Function to store partyId
+# Function to store the party_id
 def store_party_id(party_id):
-    cur.execute("INSERT INTO used_party_ids (party_id) VALUES (%s) ON CONFLICT DO NOTHING", (party_id,))
+    cur.execute("INSERT INTO used_party_ids (party_id) VALUES (%s) ON CONFLICT DO NOTHING", (str(party_id),))
     conn.commit()
-    
+
+# Function to unpad the decrypted data (PKCS7 padding)
 def unpad(data):
     padding_length = data[-1]  # Get the padding length (last byte of decrypted data)
     return data[:-padding_length]  # Remove the padding bytes
 
-# Function to decrypt data
+# Function to decrypt the encrypted data
 def decrypt_data(encrypted_data, secret_key):
-    try:
-        encrypted_bytes = base64.urlsafe_b64decode(encrypted_data)
-        iv = encrypted_bytes[:16]  # Extract IV (first 16 bytes)
-        encrypted_data = encrypted_bytes[16:]  # Extract the actual encrypted data
-        
-        # Decrypt data using AES
-        cipher = AES.new(secret_key, AES.MODE_CBC, iv)
-        decrypted_data = cipher.decrypt(encrypted_data)
-        
-        # Unpad the decrypted data and decode it as a string
-        decrypted_string = unpad(decrypted_data).decode('utf-8')  # Ensure it's correctly decoded after unpadding
-        
-        # Convert the decrypted string to a dictionary (assuming it's a valid JSON string)
-        return json.loads(decrypted_string)
-    except Exception as e:
-        # Debugging output to check what's wrong
-        print(f"Decryption error: {e}")
-        return None
+    encrypted_bytes = base64.urlsafe_b64decode(encrypted_data)
+    iv = encrypted_bytes[:16]  # Extract IV (first 16 bytes)
+    encrypted_data = encrypted_bytes[16:]  # Extract the actual encrypted data
+    
+    cipher = AES.new(secret_key, AES.MODE_CBC, iv)
+    decrypted_data = cipher.decrypt(encrypted_data)
+    
+    # Unpad the decrypted data and decode it as a string
+    decrypted_string = unpad(decrypted_data).decode('utf-8')  # Ensure it's correctly decoded after unpadding
+    
+    # Convert the decrypted string to a dictionary (assuming it's a valid JSON string)
+    return json.loads(decrypted_string)
+
 
 @app.route('/webhook', methods=['GET'])
 def webhook():
@@ -92,43 +88,49 @@ def webhook():
     if not encrypted_data:
         return jsonify({"status": "error", "message": "Missing encrypted data"}), 400
 
-    # Log the encrypted data to check what is being received
-    print(f"Received encrypted data: {encrypted_data}")
-    
     try:
         decrypted_data = decrypt_data(encrypted_data, SECRET_KEY)
     except Exception as e:
         return jsonify({"status": "error", "message": f"Decryption failed: {str(e)}"}), 400
 
-    party_id = decrypted_data["userId"]  # The key to track usage
+    party_id = decrypted_data["userId"]  # Assuming partyId is in "userId"
 
-    # Check if partyId is already used
-    if is_party_id_used(party_id):
-        return jsonify({"status": "error", "message": "partyId already used, API request not sent"}), 403  # Forbidden
+    # Start a database transaction
+    try:
+        # Check if the party_id is already used
+        if is_party_id_used(party_id):
+            return jsonify({"status": "error", "message": "Party ID already used"}), 403  # Forbidden
 
-    # Store the partyId in the database
-    store_party_id(party_id)
+        # Store the party_id before processing
+        store_party_id(party_id)
 
-    # Prepare the API request
-    json_body = {
-        "partyId": party_id,
-        "brandId": 23,
-        "bonusPlanID": 14747,
-        "amount": decrypted_data["amount"],
-        "reason": "test1",
-        "timestamp": int(time.time() * 1000)
-    }
+        # Prepare the API request
+        json_body = {
+            "partyId": party_id,
+            "brandId": 23,
+            "bonusPlanID": 14747,
+            "amount": decrypted_data["amount"],
+            "reason": "test1",
+            "timestamp": int(time.time() * 1000)
+        }
 
-    checksum = hmac.new(CHECKSUM_SECRET_KEY, f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(), hashlib.sha512)
-    
-    headers = {
-        'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
-        'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
-    }
+        checksum = hmac.new(CHECKSUM_SECRET_KEY, f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(), hashlib.sha512)
+        
+        headers = {
+            'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
+            'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
+        }
 
-    response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", json=json_body, headers=headers)
+        # Send the request to the API
+        response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", json=json_body, headers=headers)
 
-    return jsonify({"status": "success", "message": "Request sent to API", "api_response": response.json()})
+        # Return the API response
+        return jsonify({"status": "success", "message": "Request sent to API", "api_response": response.json()})
+
+    except Exception as e:
+        conn.rollback()  # Rollback the transaction in case of any failure
+        return jsonify({"status": "error", "message": f"Database error: {str(e)}"}), 500
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
