@@ -59,17 +59,31 @@ def is_party_id_used(party_id):
 def store_party_id(party_id):
     cur.execute("INSERT INTO used_party_ids (party_id) VALUES (%s) ON CONFLICT DO NOTHING", (party_id,))
     conn.commit()
+    
+def unpad(data):
+    padding_length = data[-1]  # Get the padding length (last byte of decrypted data)
+    return data[:-padding_length]  # Remove the padding bytes
 
 # Function to decrypt data
 def decrypt_data(encrypted_data, secret_key):
-    encrypted_bytes = base64.urlsafe_b64decode(encrypted_data)
-    iv = encrypted_bytes[:16]
-    encrypted_data = encrypted_bytes[16:]
-
-    cipher = AES.new(secret_key, AES.MODE_CBC, iv)
-    decrypted_data = cipher.decrypt(encrypted_data)
-
-    return json.loads(decrypted_data.decode('utf-8').rstrip("\x00"))
+    try:
+        encrypted_bytes = base64.urlsafe_b64decode(encrypted_data)
+        iv = encrypted_bytes[:16]  # Extract IV (first 16 bytes)
+        encrypted_data = encrypted_bytes[16:]  # Extract the actual encrypted data
+        
+        # Decrypt data using AES
+        cipher = AES.new(secret_key, AES.MODE_CBC, iv)
+        decrypted_data = cipher.decrypt(encrypted_data)
+        
+        # Unpad the decrypted data and decode it as a string
+        decrypted_string = unpad(decrypted_data).decode('utf-8')  # Ensure it's correctly decoded after unpadding
+        
+        # Convert the decrypted string to a dictionary (assuming it's a valid JSON string)
+        return json.loads(decrypted_string)
+    except Exception as e:
+        # Debugging output to check what's wrong
+        print(f"Decryption error: {e}")
+        return None
 
 @app.route('/webhook', methods=['GET'])
 def webhook():
