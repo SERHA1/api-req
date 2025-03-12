@@ -124,8 +124,12 @@ def webhook():
         # Send the request to the API
         response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", json=json_body, headers=headers)
 
-        # Return the API response
-        return jsonify({"status": "success", "message": "Request sent to API", "api_response": response.json()})
+        # If the API returns a success (200), we redirect with a different message
+        if response.status_code == 200:
+            return generate_html_response("Bonus Başarıyla eklendi.", "https://www.bhspwa41.com/tr/")
+        
+        # Handle other responses or errors
+        return jsonify({"status": "error", "message": "API request failed", "api_response": response.json()}), 500
 
     except Exception as e:
         conn.rollback()  # Rollback the transaction in case of any failure
@@ -180,5 +184,6 @@ def generate_html_response(message, redirect_url):
     </body>
     </html>
     """
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
