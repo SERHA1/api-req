@@ -99,7 +99,7 @@ def webhook():
     try:
         # Check if the party_id is already used
         if is_party_id_used(party_id):
-            return  generate_html_response("Bonus daha önce kullanılmış.", "https://www.bhspwa41.com/tr/")
+            return generate_html_response("Bonus daha önce kullanılmış.", "https://www.bhspwa41.com/tr/")
  # Forbidden
 
         # Store the party_id before processing
