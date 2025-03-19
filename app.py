@@ -119,7 +119,7 @@ GAME_SEGMENTS = [
     {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 4444}
 ]
 
-# Add these constants at the top with other configurations
+# Update the WHEEL_SEGMENTS to match the wheel's visual layout
 WHEEL_SEGMENTS = [
     {'position': 0, 'type': 'lose', 'text': 'Sorry No Award'},
     {'position': 1, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 2222},
@@ -465,7 +465,7 @@ def spin():
         winning_segment = random.choice(WHEEL_SEGMENTS)
         print(f"Selected segment: {winning_segment}")
         
-        # Calculate final rotation
+        # Calculate final rotation to ensure it stops at the correct segment
         full_spins = random.randint(5, 8) * 360  # 5-8 full rotations
         segment_angle = winning_segment['position'] * 90  # Each segment is 90 degrees
         final_rotation = full_spins + segment_angle + 45  # +45 to point to center of segment
@@ -508,6 +508,7 @@ def spin():
             )
 
             if response.status_code != 200:
+                print(f"Bonus API failed with status {response.status_code}: {response.text}")
                 raise Exception("Bonus API request failed")
         else:
             store_game_result(
@@ -522,7 +523,7 @@ def spin():
         session['can_play'] = False
 
         # Return success response
-        print("Returning success response")
+        print(f"Returning success response with message: {winning_segment['text']}")
         return jsonify({
             "success": True,
             "rotation": final_rotation,
