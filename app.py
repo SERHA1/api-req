@@ -465,8 +465,7 @@ def spin():
         winning_segment = random.choice(WHEEL_SEGMENTS)
         print(f"Selected segment: {winning_segment}")
         
-        # Calculate final rotation - FIXED CALCULATION
-        # Each segment is 90 degrees, and we want to point to the center of the segment
+        # Calculate final rotation
         segment_angles = {
             0: 45,    # "100TL Bonus"
             1: 135,   # "Sorry No Award"
@@ -479,7 +478,7 @@ def spin():
         final_rotation = full_spins + segment_angles[winning_segment['position']]
         print(f"Final rotation: {final_rotation} degrees for position {winning_segment['position']}")
 
-        # Store result in database
+        # Store result in database first
         if winning_segment['type'] == 'win':
             print(f"WIN result: {winning_segment['amount']}TL")
             store_game_result(
@@ -490,35 +489,45 @@ def spin():
             )
             
             # Process bonus API call
-            json_body = {
-                "partyId": party_id,
-                "brandId": 23,
-                "bonusPlanID": winning_segment['planId'],
-                "amount": winning_segment['amount'],
-                "reason": "test1",
-                "timestamp": int(time.time() * 1000)
-            }
+            try:
+                json_body = {
+                    "partyId": party_id,
+                    "brandId": 23,
+                    "bonusPlanID": winning_segment['planId'],
+                    "amount": winning_segment['amount'],
+                    "reason": "test1",
+                    "timestamp": int(time.time() * 1000)
+                }
 
-            checksum = hmac.new(
-                CHECKSUM_SECRET_KEY,
-                f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(),
-                hashlib.sha512
-            )
-            
-            headers = {
-                'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
-                'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
-            }
+                checksum = hmac.new(
+                    CHECKSUM_SECRET_KEY,
+                    f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(),
+                    hashlib.sha512
+                )
+                
+                headers = {
+                    'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
+                    'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
+                }
 
-            response = requests.post(
-                "https://ps-secundus.gmntc.com/ips/bonus/trigger",
-                json=json_body,
-                headers=headers
-            )
+                print(f"Sending API request: {json_body}")
+                print(f"Headers: {headers}")
+                
+                response = requests.post(
+                    "https://ps-secundus.gmntc.com/ips/bonus/trigger",
+                    json=json_body,
+                    headers=headers
+                )
 
-            if response.status_code != 200:
-                print(f"Bonus API failed with status {response.status_code}: {response.text}")
-                raise Exception("Bonus API request failed")
+                print(f"API response status: {response.status_code}")
+                print(f"API response body: {response.text}")
+
+                if response.status_code != 200:
+                    print(f"Bonus API failed with status {response.status_code}: {response.text}")
+                    # Continue execution even if API fails
+            except Exception as api_error:
+                print(f"API call error: {str(api_error)}")
+                # Continue execution even if API fails
         else:
             print("LOSE result")
             store_game_result(

@@ -20,7 +20,6 @@
             width: 400px;
             height: 400px;
             margin: 20px;
-            pointer-events: none;
         }
         
         .wheel {
@@ -28,10 +27,8 @@
             height: 100%;
             border-radius: 50%;
             position: relative;
-            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
             transform: rotate(0deg);
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            pointer-events: none;
             overflow: hidden;
             background-color: #333;
         }
@@ -43,10 +40,6 @@
             top: 0;
             left: 200px;
             transform-origin: 0% 100%;
-            transform: rotate(0deg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         
         .segment:nth-child(1) {
@@ -75,10 +68,11 @@
             font-weight: bold;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
             font-size: 16px;
-            width: 100px;
+            width: 120px;
             text-align: center;
-            transform: rotate(45deg) translateX(60px) translateY(-20px);
-            pointer-events: none;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) rotate(45deg) translateY(-80px);
         }
         
         .wheel-center {
@@ -172,7 +166,7 @@
             
             console.log("Token received:", GAME_TOKEN ? "Yes" : "No");
 
-            async function handleSpin() {
+            spinButton.addEventListener('click', async function() {
                 if (isSpinning) return;
                 
                 try {
@@ -191,16 +185,21 @@
                     const data = await response.json();
                     console.log("Spin response:", data);
                     
-                    if (!data.success) throw new Error(data.message);
+                    if (!data.success) {
+                        throw new Error(data.message);
+                    }
 
-                    // Animate wheel to server-determined position
+                    // Apply the rotation as inline style
                     wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
                     wheel.style.transform = `rotate(${data.rotation}deg)`;
+                    
+                    console.log("Wheel rotation applied:", data.rotation);
 
                     // Show result after animation
                     setTimeout(() => {
                         resultMessage.textContent = data.message;
                         resultMessage.style.display = 'block';
+                        
                         setTimeout(() => {
                             window.location.href = data.redirect_url;
                         }, 3000);
@@ -210,14 +209,18 @@
                     console.error("Spin error:", error);
                     resultMessage.textContent = error.message || 'An error occurred';
                     resultMessage.style.display = 'block';
+                    
                     setTimeout(() => {
                         window.location.href = 'https://www.bhspwa41.com/tr/';
                     }, 2000);
                 }
-            }
+            });
 
-            spinButton.addEventListener('click', handleSpin);
-            wheel.addEventListener('transitionend', () => isSpinning = false);
+            // Reset spinning state when animation ends
+            wheel.addEventListener('transitionend', function() {
+                console.log("Transition ended");
+                isSpinning = false;
+            });
 
             // Prevent tampering
             window.addEventListener('contextmenu', e => e.preventDefault());
