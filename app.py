@@ -473,68 +473,65 @@ def spin():
                 "redirect_url": "https://www.bhspwa41.com/tr/"
             })
 
-        # NEW APPROACH: Fixed mapping from visual_index to segment data
-        # First, decide where the wheel should visually stop
-        visual_index = random.randint(0, 3)
+        # COMPLETELY NEW APPROACH:
+        # 1. First decide what reward the user will get
+        # 2. Then calculate the rotation to ensure the wheel stops at the corresponding segment
         
-        # The visual wheel order (clockwise from top):
-        # 0-90°: Red (Ödül Kazanamadınız)
-        # 90-180°: Light Green (100TL)
-        # 180-270°: Medium Green (150TL)
-        # 270-360°: Dark Green (250TL)
+        # Define all possible rewards
+        rewards = [
+            {'index': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},
+            {'index': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},
+            {'index': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green'},
+            {'index': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green'}
+        ]
         
-        # Map each index to its exact data - CORRECTED MAPPING
-        segment_map = {
-            0: {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},
-            1: {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},
-            2: {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green'},
-            3: {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green'}
+        # Randomly select a reward
+        selected_reward_index = random.randint(0, 3)
+        selected_reward = rewards[selected_reward_index]
+        
+        print(f"Selected reward: {selected_reward['text']}")
+        
+        # Map the reward to the correct wheel segment position
+        # This is the critical part - we need to ensure the wheel stops at the right segment
+        wheel_segment_positions = {
+            0: 45,   # Red segment (Ödül Kazanamadınız) - centered at 45°
+            1: 135,  # Light Green segment (100TL) - centered at 135°
+            2: 225,  # Medium Green segment (150TL) - centered at 225°
+            3: 315   # Dark Green segment (250TL) - centered at 315°
         }
         
-        # Get the winning segment data
-        winning_segment = segment_map[visual_index]
-        
-        # Calculate the exact rotation angle to stop at the pointer - CORRECTED ANGLES
-        rotation_angles = {
-            0: 45,    # Red (pointer at top, red segment) - centered at 45°
-            1: 135,   # Light Green (pointer at top, green segment) - centered at 135°
-            2: 225,   # Medium Green (pointer at top, medium green segment) - centered at 225°
-            3: 315    # Dark Green (pointer at top, dark green segment) - centered at 315°
-        }
-        
-        # Get the rotation angle needed
-        segment_center = rotation_angles[visual_index]
+        # Calculate the rotation to stop at the selected segment
+        segment_center = wheel_segment_positions[selected_reward_index]
         
         # Add random full rotations for effect (5-8 rotations)
         full_rotations = random.randint(5, 8) * 360
         final_rotation = full_rotations + segment_center
         
-        print(f"Selected visual_index: {visual_index}")
-        print(f"Selected segment: {winning_segment['text']}")
-        print(f"Segment position: {segment_center}° (middle of segment {visual_index})")
+        print(f"Selected reward index: {selected_reward_index}")
+        print(f"Segment center: {segment_center}°")
         print(f"Final rotation: {final_rotation}°")
         print(f"Final position after rotation: {final_rotation % 360}°")
         
-        # Process result based on the winning segment
-        if winning_segment['type'] == 'win':
-            print(f"WIN result: {winning_segment['amount']}TL")
+        # Process the selected reward
+        if selected_reward['type'] == 'win':
+            print(f"WIN result: {selected_reward['amount']}TL")
             game_id = store_game_result(
                 party_id=party_id,
                 result_type='win',
-                amount=winning_segment['amount'],
-                bonus_plan_id=winning_segment['planId']
+                amount=selected_reward['amount'],
+                bonus_plan_id=selected_reward['planId']
             )
             
             # Process bonus API call
             api_success = True
-            api_message = winning_segment['text']
+            api_message = selected_reward['text']
             
             try:
                 json_body = {
                     "partyId": party_id,
                     "brandId": 23,
-                    "bonusPlanID": winning_segment['planId'],
-                    "amount": winning_segment['amount'],
+                    "bonusPlanID": selected_reward['planId'],
+                    "amount": selected_reward['amount'],
                     "reason": "test1",
                     "timestamp": int(time.time() * 1000)
                 }
@@ -579,7 +576,7 @@ def spin():
                 bonus_plan_id=None
             )
             api_success = True
-            api_message = winning_segment['text']
+            api_message = selected_reward['text']
 
         # Mark as played with the game_id
         store_party_id(party_id, game_id)
@@ -591,10 +588,9 @@ def spin():
             "success": True,
             "rotation": final_rotation,
             "message": api_message,
-            "position": winning_segment['position'],
-            "segment_index": visual_index,
-            "segment_color": winning_segment['color'],
-            "segment_text": winning_segment['text'],
+            "position": selected_reward_index,
+            "segment_index": selected_reward_index,
+            "segment_text": selected_reward['text'],
             "final_position_degrees": final_rotation % 360,
             "api_success": api_success,
             "redirect_url": "https://www.bhspwa41.com/tr/"
