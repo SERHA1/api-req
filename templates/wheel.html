@@ -200,16 +200,22 @@
                         throw new Error(data.message);
                     }
 
-                    // Apply the rotation as inline style - use positive rotation
+                    // Apply the rotation as inline style
                     wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                    
+                    // Rotate the wheel to the final position
+                    // We need to add 360 degrees to ensure it rotates in the correct direction
                     wheel.style.transform = `rotate(${data.rotation}deg)`;
                     
                     console.log("Wheel rotation applied:", data.rotation);
+                    console.log("Selected position:", data.position);
 
                     // Show result after animation
                     setTimeout(() => {
                         resultMessage.textContent = data.message;
                         resultMessage.style.display = 'block';
+                        
+                        console.log("Final wheel position:", wheel.style.transform);
                         
                         // Only redirect if API was successful
                         if (data.api_success !== false) {

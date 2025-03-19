@@ -463,21 +463,23 @@ def spin():
 
         # Add this before the random selection
         print("Available segments:", WHEEL_SEGMENTS)
+        
         # Generate random result - ensure it's truly random
         winning_segment = random.choice(WHEEL_SEGMENTS)
         print(f"Selected segment: {winning_segment}")
-        # After selection
         print(f"Selected segment position: {winning_segment['position']}, type: {winning_segment['type']}, text: {winning_segment['text']}")
 
-        # Update the segment angles to ensure the wheel stops at the center of each segment
+        # Define the segment angles based on the wheel's visual layout
+        # These angles represent where the wheel should stop to point to each segment
         segment_angles = {
-            0: 45,    # "100TL Bonus" - center of segment (top-left)
-            1: 135,   # "Ödül Kazanamadınız" - center of segment (top-right)
-            2: 225,   # "250TL Bonus" - center of segment (bottom-right)
-            3: 315    # "Ödül Kazanamadınız" - center of segment (bottom-left)
+            0: 0,    # "100TL Bonus" - top position
+            1: 90,   # "Ödül Kazanamadınız" - right position
+            2: 180,  # "250TL Bonus" - bottom position
+            3: 270   # "Ödül Kazanamadınız" - left position
         }
 
-        # Calculate final rotation to ensure it stops at the center of the segment
+        # Calculate final rotation to ensure it stops at the correct position
+        # 5-8 full rotations plus the angle to the selected segment
         full_spins = random.randint(5, 8) * 360
         final_rotation = full_spins + segment_angles[winning_segment['position']]
         print(f"Final rotation: {final_rotation} degrees for position {winning_segment['position']}")
