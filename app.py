@@ -7,8 +7,9 @@ import psycopg2  # PostgreSQL connector
 from Crypto.Cipher import AES
 import hashlib
 import hmac
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from urllib.parse import urlparse  # Make sure to import urlparse
+import secrets
 
 
 app = Flask(__name__)
@@ -80,6 +81,8 @@ def decrypt_data(encrypted_data, secret_key):
     # Convert the decrypted string to a dictionary (assuming it's a valid JSON string)
     return json.loads(decrypted_string)
 
+# Add this at the top with other configurations
+app.secret_key = secrets.token_hex(16)  # Secure secret key for sessions
 
 @app.route('/webhook', methods=['GET'])
 def webhook():
@@ -191,7 +194,7 @@ def wheel_game():
     encrypted_data = request.args.get("data")
     
     if not encrypted_data:
-        return jsonify({"status": "error", "message": "Missing encrypted data"}), 400
+        return generate_html_response("Invalid request.", "https://www.bhspwa41.com/tr/")
 
     try:
         decrypted_data = decrypt_data(encrypted_data, SECRET_KEY)
@@ -200,22 +203,43 @@ def wheel_game():
         # Check if user already played
         if is_party_id_used(party_id):
             return generate_html_response("Bonus daha önce kullanılmış.", "https://www.bhspwa41.com/tr/")
-            
-        # Store the party_id in session for later use
+        
+        # Generate a unique token for this session
+        session['game_token'] = secrets.token_hex(32)
         session['party_id'] = party_id
         session['amount'] = decrypted_data["amount"]
+        session['can_play'] = True
         
-        return render_template('wheel.html')
+        return render_template('wheel.html', token=session['game_token'])
         
     except Exception as e:
         return generate_html_response("Hata Oluştu", "https://www.bhspwa41.com/tr/")
 
-@app.route('/process_win')
-def process_win():
+@app.route('/verify_play', methods=['POST'])
+def verify_play():
+    if not session.get('can_play'):
+        return jsonify({'valid': False, 'message': 'Session expired'})
+        
     party_id = session.get('party_id')
-    amount = request.args.get('amount')
-    bonus_plan_id = request.args.get('planId')
-    
+    if not party_id:
+        return jsonify({'valid': False, 'message': 'Invalid session'})
+        
+    # Double-check database
+    if is_party_id_used(party_id):
+        return jsonify({'valid': False, 'message': 'Already played'})
+        
+    return jsonify({'valid': True})
+
+@app.route('/process_win', methods=['POST'])
+def process_win():
+    # Verify game token
+    if not session.get('can_play') or request.json.get('token') != session.get('game_token'):
+        return jsonify({
+            "message": "Invalid session",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+    party_id = session.get('party_id')
     if not party_id:
         return jsonify({
             "message": "Session expired",
@@ -223,15 +247,33 @@ def process_win():
         })
 
     try:
-        # Store the party_id before processing
+        # Final database check before processing
+        if is_party_id_used(party_id):
+            return jsonify({
+                "message": "Already played",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+
+        # Validate the bonus plan ID
+        bonus_plan_id = request.json.get('planId')
+        if bonus_plan_id not in [2222, 4444]:
+            return jsonify({
+                "message": "Invalid bonus plan",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+
+        # Store the party_id immediately to prevent duplicate plays
         store_party_id(party_id)
+        
+        # Disable further plays in this session
+        session['can_play'] = False
 
         # Prepare the API request
         json_body = {
             "partyId": party_id,
             "brandId": 23,
             "bonusPlanID": int(bonus_plan_id),
-            "amount": amount,
+            "amount": request.json.get('amount'),
             "reason": "test1",
             "timestamp": int(time.time() * 1000)
         }
@@ -251,7 +293,7 @@ def process_win():
 
         if response.status_code == 200:
             return jsonify({
-                "message": f"Congratulations! You won {amount}TL Bonus Award",
+                "message": f"Congratulations! You won {request.json.get('amount')}TL Bonus Award",
                 "redirect_url": "https://www.bhspwa41.com/tr/"
             })
         

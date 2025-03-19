@@ -24,13 +24,76 @@
         .wheel {
             width: 100%;
             height: 100%;
+            border-radius: 50%;
+            position: relative;
             transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            transform: rotate(0deg);
+            background: conic-gradient(
+                #FF6B6B 0deg 90deg,
+                #4ECDC4 90deg 180deg,
+                #45B7D1 180deg 270deg,
+                #96CEB4 270deg 360deg
+            );
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .wheel-center {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #333;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+        
+        .segment-text {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform-origin: 0 0;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            font-size: 16px;
+            width: 120px;
+            text-align: center;
+        }
+        
+        .segment-text:nth-child(1) {
+            transform: rotate(45deg) translateY(-140px);
+        }
+        
+        .segment-text:nth-child(2) {
+            transform: rotate(135deg) translateY(-140px);
+        }
+        
+        .segment-text:nth-child(3) {
+            transform: rotate(225deg) translateY(-140px);
+        }
+        
+        .segment-text:nth-child(4) {
+            transform: rotate(315deg) translateY(-140px);
+        }
+        
+        .pointer {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background-color: #333;
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            z-index: 2;
         }
         
         .spin-button {
             padding: 15px 30px;
             font-size: 18px;
-            background-color: #f44336;
+            background-color: #333;
             color: white;
             border: none;
             border-radius: 25px;
@@ -40,7 +103,7 @@
         }
         
         .spin-button:hover {
-            background-color: #d32f2f;
+            background-color: #555;
         }
         
         .spin-button:disabled {
@@ -48,73 +111,158 @@
             cursor: not-allowed;
         }
         
-        .pointer {
-            position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40px;
-            height: 40px;
-            background-color: #f44336;
-            clip-path: polygon(50% 100%, 0 0, 100% 0);
-        }
-        
         .result-message {
             font-size: 24px;
             margin-top: 20px;
             text-align: center;
             display: none;
+            padding: 20px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Add lines between segments */
+        .wheel::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(255,255,255,0.5);
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+
+        .wheel::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background: rgba(255,255,255,0.5);
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
         }
     </style>
 </head>
 <body>
     <div class="wheel-container">
         <div class="pointer"></div>
-        <img src="https://i.ibb.co/wJKqGXm/wheel.png" class="wheel" id="wheel">
+        <div class="wheel" id="wheel">
+            <div class="wheel-center"></div>
+            <div class="segment-text">Sorry No Award</div>
+            <div class="segment-text">100TL Bonus</div>
+            <div class="segment-text">Sorry No Award</div>
+            <div class="segment-text">250TL Bonus</div>
+        </div>
     </div>
     <button class="spin-button" id="spinButton">SPIN THE WHEEL</button>
     <div class="result-message" id="resultMessage"></div>
+
+    <script>
+        const GAME_TOKEN = '{{ token }}';  // Get token from server
+    </script>
 
     <script>
         const wheel = document.getElementById('wheel');
         const spinButton = document.getElementById('spinButton');
         const resultMessage = document.getElementById('resultMessage');
         let canSpin = true;
+        let isSpinning = false;
 
         // Define segments (0-3 clockwise from top)
         const segments = [
-            { type: 'lose', text: 'Sorry No Award' },
-            { type: 'win', text: 'Win 100TL Bonus', amount: 100, planId: 2222 },
-            { type: 'lose', text: 'Sorry No Award' },
-            { type: 'win', text: 'Win 250TL Bonus', amount: 250, planId: 4444 }
+            { type: 'lose', text: 'Sorry No Award', angle: 45 },
+            { type: 'win', text: 'Win 100TL Bonus', amount: 100, planId: 2222, angle: 135 },
+            { type: 'lose', text: 'Sorry No Award', angle: 225 },
+            { type: 'win', text: 'Win 250TL Bonus', amount: 250, planId: 4444, angle: 315 }
         ];
 
-        spinButton.addEventListener('click', () => {
-            if (!canSpin) return;
+        async function verifyCanPlay() {
+            try {
+                const response = await fetch('/verify_play', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                return data.valid;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function getRandomSegment() {
+            // Server-side entropy for random number generation
+            const array = new Uint32Array(1);
+            crypto.getRandomValues(array);
+            return array[0] % segments.length;
+        }
+
+        function calculateSpinAngle(segmentIndex) {
+            // Number of complete spins (between 5 and 8 full rotations)
+            const fullSpins = (Math.floor(Math.random() * 4) + 5) * 360;
+            
+            // Target angle for the chosen segment
+            const targetAngle = segments[segmentIndex].angle;
+            
+            // Total rotation will be full spins plus the target angle
+            return fullSpins + targetAngle;
+        }
+
+        spinButton.addEventListener('click', async () => {
+            if (!canSpin || isSpinning) return;
+            
+            // Verify play eligibility
+            const canPlay = await verifyCanPlay();
+            if (!canPlay) {
+                resultMessage.textContent = 'This game session has expired.';
+                resultMessage.style.display = 'block';
+                window.location.href = 'https://www.bhspwa41.com/tr/';
+                return;
+            }
+
+            isSpinning = true;
             canSpin = false;
             spinButton.disabled = true;
             resultMessage.style.display = 'none';
 
-            // Random segment (0-3)
-            const segmentIndex = Math.floor(Math.random() * 4);
-            // Calculate rotation (at least 5 full spins + segment position)
-            const rotation = 1800 + (segmentIndex * 90);
+            const segmentIndex = getRandomSegment();
+            const finalRotation = calculateSpinAngle(segmentIndex);
             
-            wheel.style.transform = `rotate(${rotation}deg)`;
+            wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+            wheel.style.transform = `rotate(${finalRotation}deg)`;
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 const segment = segments[segmentIndex];
                 if (segment.type === 'win') {
-                    // Make API call with the corresponding bonus plan ID
-                    fetch(`/process_win?amount=${segment.amount}&planId=${segment.planId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            resultMessage.textContent = data.message;
-                            resultMessage.style.display = 'block';
-                            setTimeout(() => {
-                                window.location.href = data.redirect_url;
-                            }, 3000);
+                    try {
+                        const response = await fetch('/process_win', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                token: GAME_TOKEN,
+                                amount: segment.amount,
+                                planId: segment.planId
+                            })
                         });
+                        
+                        const data = await response.json();
+                        resultMessage.textContent = data.message;
+                        resultMessage.style.display = 'block';
+                        
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 3000);
+                    } catch (error) {
+                        resultMessage.textContent = 'An error occurred. Please try again.';
+                        resultMessage.style.display = 'block';
+                        window.location.href = 'https://www.bhspwa41.com/tr/';
+                    }
                 } else {
                     resultMessage.textContent = segment.text;
                     resultMessage.style.display = 'block';
@@ -122,7 +270,26 @@
                         window.location.href = 'https://www.bhspwa41.com/tr/';
                     }, 3000);
                 }
-            }, 4000);
+            }, 4100);
+        });
+
+        // Prevent any tampering with the wheel during spin
+        wheel.addEventListener('transitionend', () => {
+            wheel.style.transition = 'none';
+            isSpinning = false;
+        });
+
+        // Prevent developer tools manipulation
+        Object.freeze(segments);
+        
+        // Disable right-click
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // Prevent keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.altKey || e.shiftKey) {
+                e.preventDefault();
+            }
         });
     </script>
 </body>
