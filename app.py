@@ -481,28 +481,28 @@ def spin():
         visual_index = random.randint(0, 3)
         
         # Map visual index to the corresponding segment data
+        # These MUST match the exact order shown in the wheel HTML
         segments = [
-            {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},
-            {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},
-            {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green'},
-            {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green'}
+            {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},          # Red segment (top-right)
+            {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},  # Light green (right-bottom)
+            {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green'}, # Medium green (bottom-left)
+            {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green'}    # Dark green (left-top)
         ]
         
         winning_segment = segments[visual_index]
         
         # Calculate rotation to ensure the wheel stops at the selected visual segment
-        # Each segment is 90 degrees, we want to stop at the middle (45 degrees into the segment)
+        # Each segment is 90 degrees wide (360° ÷ 4)
+        # We want to stop at the middle of the segment (45° into the segment)
         segment_center = visual_index * 90 + 45
-        
-        # Add full rotations for effect (5-8 full rotations)
+
+        # Add random full rotations for effect (5-8 full rotations)
         full_rotations = random.randint(5, 8) * 360
         final_rotation = full_rotations + segment_center
-        
-        print(f"Visual segment index: {visual_index}")
-        print(f"Visual segment: {winning_segment['text']}")
-        print(f"Segment center: {segment_center} degrees")
-        print(f"Final rotation: {final_rotation} degrees")
-        print(f"Final position after rotation: {final_rotation % 360} degrees")
+
+        print(f"Segment center: {segment_center}° (middle of segment {visual_index})")
+        print(f"Final rotation: {final_rotation}°")
+        print(f"Final position after rotation: {final_rotation % 360}°")
         
         # Process result based on the visual segment
         if winning_segment['type'] == 'win':
