@@ -237,38 +237,31 @@
 
             setTimeout(async () => {
                 const segment = segments[segmentIndex];
-                if (segment.type === 'win') {
-                    try {
-                        const response = await fetch('/process_win', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                token: GAME_TOKEN,
-                                amount: segment.amount,
-                                planId: segment.planId
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        resultMessage.textContent = data.message;
-                        resultMessage.style.display = 'block';
-                        
-                        setTimeout(() => {
-                            window.location.href = data.redirect_url;
-                        }, 3000);
-                    } catch (error) {
-                        resultMessage.textContent = 'An error occurred. Please try again.';
-                        resultMessage.style.display = 'block';
-                        window.location.href = 'https://www.bhspwa41.com/tr/';
-                    }
-                } else {
-                    resultMessage.textContent = segment.text;
+                try {
+                    const response = await fetch('/process_game_result', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            token: GAME_TOKEN,
+                            result_type: segment.type,
+                            amount: segment.amount,
+                            planId: segment.planId
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    resultMessage.textContent = data.message;
                     resultMessage.style.display = 'block';
+                    
                     setTimeout(() => {
-                        window.location.href = 'https://www.bhspwa41.com/tr/';
+                        window.location.href = data.redirect_url;
                     }, 3000);
+                } catch (error) {
+                    resultMessage.textContent = 'An error occurred. Please try again.';
+                    resultMessage.style.display = 'block';
+                    window.location.href = 'https://www.bhspwa41.com/tr/';
                 }
             }, 4100);
         });

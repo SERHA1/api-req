@@ -51,6 +51,19 @@ cur.execute("""
 """)
 conn.commit()
 
+# Add this after the first table creation
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS game_results (
+        id SERIAL PRIMARY KEY,
+        party_id TEXT UNIQUE NOT NULL,
+        result_type TEXT NOT NULL,
+        amount INTEGER,
+        bonus_plan_id INTEGER,
+        played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+""")
+conn.commit()
+
 # Function to check if the party_id is already used
 def is_party_id_used(party_id):
     cur.execute("SELECT 1 FROM used_party_ids WHERE party_id = %s", (str(party_id),))  # Cast party_id to string
@@ -59,6 +72,17 @@ def is_party_id_used(party_id):
 # Function to store the party_id
 def store_party_id(party_id):
     cur.execute("INSERT INTO used_party_ids (party_id) VALUES (%s) ON CONFLICT DO NOTHING", (str(party_id),))
+    conn.commit()
+
+# Add new function to store game results
+def store_game_result(party_id, result_type, amount=None, bonus_plan_id=None):
+    cur.execute(
+        """
+        INSERT INTO game_results (party_id, result_type, amount, bonus_plan_id) 
+        VALUES (%s, %s, %s, %s)
+        """,
+        (str(party_id), result_type, amount, bonus_plan_id)
+    )
     conn.commit()
 
 # Function to unpad the decrypted data (PKCS7 padding)
@@ -87,56 +111,113 @@ app.secret_key = secrets.token_hex(16)  # Secure secret key for sessions
 @app.route('/webhook', methods=['GET'])
 def webhook():
     encrypted_data = request.args.get("data")
-
+    
     if not encrypted_data:
-        return jsonify({"status": "error", "message": "Missing encrypted data"}), 400
+        return generate_html_response("Invalid request.", "https://www.bhspwa41.com/tr/")
 
     try:
         decrypted_data = decrypt_data(encrypted_data, SECRET_KEY)
-    except Exception as e:
-        return jsonify({"status": "error", "message": f"Decryption failed: {str(e)}"}), 400
-
-    party_id = decrypted_data["userId"]  # Assuming partyId is in "userId"
-
-    # Start a database transaction
-    try:
-        # Check if the party_id is already used
+        party_id = decrypted_data["userId"]
+        
+        # Check if user already played
         if is_party_id_used(party_id):
             return generate_html_response("Bonus daha önce kullanılmış.", "https://www.bhspwa41.com/tr/")
+            
+        # Store session data for the game
+        session['game_token'] = secrets.token_hex(32)
+        session['party_id'] = party_id
+        session['amount'] = decrypted_data["amount"]
+        session['can_play'] = True
+        
+        return render_template('wheel.html', token=session['game_token'])
+        
+    except Exception as e:
+        return generate_html_response("Hata Oluştu", "https://www.bhspwa41.com/tr/")
 
-        # Store the party_id before processing
+@app.route('/process_game_result', methods=['POST'])
+def process_game_result():
+    # Verify game token and session
+    if not session.get('can_play') or request.json.get('token') != session.get('game_token'):
+        return jsonify({
+            "message": "Invalid session",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+    party_id = session.get('party_id')
+    if not party_id:
+        return jsonify({
+            "message": "Session expired",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+    try:
+        # Final database check before processing
+        if is_party_id_used(party_id):
+            return jsonify({
+                "message": "Already played",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+
+        result_type = request.json.get('result_type')
+        amount = request.json.get('amount')
+        bonus_plan_id = request.json.get('planId')
+
+        # Store the game result first
+        store_game_result(party_id, result_type, amount, bonus_plan_id)
+        
+        # Mark as played in the used_party_ids table
         store_party_id(party_id)
+        
+        # Disable further plays in this session
+        session['can_play'] = False
 
-        # Prepare the API request
+        # If it's a losing result, just return the message
+        if result_type == 'lose':
+            return jsonify({
+                "message": "Sorry No Award",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+
+        # For winning results, trigger the bonus API
         json_body = {
             "partyId": party_id,
             "brandId": 23,
-            "bonusPlanID": 14747,
-            "amount": decrypted_data["amount"],
+            "bonusPlanID": int(bonus_plan_id),
+            "amount": amount,
             "reason": "test1",
             "timestamp": int(time.time() * 1000)
         }
 
-        checksum = hmac.new(CHECKSUM_SECRET_KEY, f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(), hashlib.sha512)
+        checksum = hmac.new(CHECKSUM_SECRET_KEY, 
+                          f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(), 
+                          hashlib.sha512)
         
         headers = {
             'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
             'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
         }
 
-        # Send the request to the API
-        response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", json=json_body, headers=headers)
+        response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", 
+                               json=json_body, 
+                               headers=headers)
 
-        # If the API returns a success (200), we redirect with a different message
         if response.status_code == 200:
-            return generate_html_response("Bonus Başarıyla eklendi.", "https://www.bhspwa41.com/tr/")
+            return jsonify({
+                "message": f"Congratulations! You won {amount}TL Bonus Award",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
         
-        # Handle other responses or errors
-        return jsonify({"status": "error", "message": "API request failed", "api_response": response.json()}), 500
+        return jsonify({
+            "message": "Error processing bonus",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
 
     except Exception as e:
-        conn.rollback()  # Rollback the transaction in case of any failure
-        return generate_html_response("Hata Oluştu", "https://www.bhspwa41.com/tr/")
+        conn.rollback()
+        return jsonify({
+            "message": "Error occurred",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
 
 def generate_html_response(message, redirect_url):
     return f"""
