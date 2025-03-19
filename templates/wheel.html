@@ -222,6 +222,12 @@
                                 window.location.href = data.redirect_url;
                             }, 3000);
                         }
+
+                        // Add inside the setTimeout after wheel stops
+                        console.log("Result data:", data);
+                        console.log("Visual segment index:", data.segment_index);
+                        console.log("Segment text:", data.segment_text);
+                        console.log("Final wheel position:", data.final_position_degrees + "°");
                     }, 4100);
 
                 } catch (error) {

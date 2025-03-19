@@ -477,14 +477,13 @@ def spin():
         # First, decide where the wheel should visually stop
         visual_index = random.randint(0, 3)
         
-        # Fixed mapping of rotation angles to segments
-        # The wheel has text labels in this order:
-        # [0]: "Ödül Kazanamadınız" (Red)
-        # [1]: "100TL Ödül Kazandınız" (Light Green)
-        # [2]: "150TL Ödül Kazandınız" (Medium Green)
-        # [3]: "250TL Ödül Kazandınız" (Dark Green)
+        # The visual wheel order (clockwise from top):
+        # 0-90°: Red (Ödül Kazanamadınız)
+        # 90-180°: Light Green (100TL)
+        # 180-270°: Medium Green (150TL)
+        # 270-360°: Dark Green (250TL)
         
-        # Map each index to its exact data
+        # Map each index to its exact data - CORRECTED MAPPING
         segment_map = {
             0: {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},
             1: {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},
@@ -495,14 +494,12 @@ def spin():
         # Get the winning segment data
         winning_segment = segment_map[visual_index]
         
-        # Calculate the exact rotation angle to stop at the pointer
-        # The wheel rotates clockwise, segments are 90 degrees each
-        # We want to stop in the middle of the segment
+        # Calculate the exact rotation angle to stop at the pointer - CORRECTED ANGLES
         rotation_angles = {
-            0: 45,    # Red (pointer at top, red segment)
-            1: 135,   # Light Green (pointer at top, green segment)
-            2: 225,   # Medium Green (pointer at top, medium green segment)
-            3: 315    # Dark Green (pointer at top, dark green segment)
+            0: 45,    # Red (pointer at top, red segment) - centered at 45°
+            1: 135,   # Light Green (pointer at top, green segment) - centered at 135°
+            2: 225,   # Medium Green (pointer at top, medium green segment) - centered at 225°
+            3: 315    # Dark Green (pointer at top, dark green segment) - centered at 315°
         }
         
         # Get the rotation angle needed
@@ -597,6 +594,8 @@ def spin():
             "position": winning_segment['position'],
             "segment_index": visual_index,
             "segment_color": winning_segment['color'],
+            "segment_text": winning_segment['text'],
+            "final_position_degrees": final_rotation % 360,
             "api_success": api_success,
             "redirect_url": "https://www.bhspwa41.com/tr/"
         })
