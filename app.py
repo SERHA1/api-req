@@ -121,10 +121,10 @@ GAME_SEGMENTS = [
 
 # Update the WHEEL_SEGMENTS to match the wheel's visual layout
 WHEEL_SEGMENTS = [
-    {'position': 0, 'type': 'lose', 'text': 'Sorry No Award'},
-    {'position': 1, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 2222},
-    {'position': 2, 'type': 'lose', 'text': 'Sorry No Award'},
-    {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 4444}
+    {'position': 0, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 2222},
+    {'position': 1, 'type': 'lose', 'text': 'Sorry No Award'},
+    {'position': 2, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 4444},
+    {'position': 3, 'type': 'lose', 'text': 'Sorry No Award'}
 ]
 
 @app.route('/webhook', methods=['GET'])
@@ -467,12 +467,11 @@ def spin():
         
         # Calculate final rotation - FIXED CALCULATION
         # Each segment is 90 degrees, and we want to point to the center of the segment
-        # Position 0 = 45°, Position 1 = 135°, Position 2 = 225°, Position 3 = 315°
         segment_angles = {
-            0: 45,    # "Sorry No Award"
-            1: 135,   # "100TL Bonus"
-            2: 225,   # "Sorry No Award"
-            3: 315    # "250TL Bonus"
+            0: 45,    # "100TL Bonus"
+            1: 135,   # "Sorry No Award"
+            2: 225,   # "250TL Bonus"
+            3: 315    # "Sorry No Award"
         }
         
         # 5-8 full rotations plus the angle to the center of the segment
