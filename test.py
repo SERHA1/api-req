@@ -59,9 +59,3 @@ if decrypted_data == data_json:
     print("Test passed: Decrypted data matches the original data.")
 else:
     print("Test failed: Decrypted data does not match the original data.")
-
-# Add this at the end of test.py
-if __name__ == '__main__':
-    # Get the port from the environment variable or use 5000 as default
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)

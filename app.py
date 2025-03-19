@@ -726,6 +726,7 @@ def download_csv():
         return "An error occurred while generating the CSV file.", 500
 
 if __name__ == '__main__':
-    # Get the port from the environment variable or use 5000 as default
+    # This is for local development
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+# The gunicorn command in the Procfile will handle production deployment
