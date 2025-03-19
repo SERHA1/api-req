@@ -204,7 +204,7 @@
                     wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
                     
                     // Rotate the wheel to the final position
-                    // We need to add 360 degrees to ensure it rotates in the correct direction
+                    // We need to add an offset to ensure it stops at the center of the segment
                     wheel.style.transform = `rotate(${data.rotation}deg)`;
                     
                     console.log("Wheel rotation applied:", data.rotation);

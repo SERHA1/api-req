@@ -472,10 +472,10 @@ def spin():
         # Define the segment angles based on the wheel's visual layout
         # These angles represent where the wheel should stop to point to each segment
         segment_angles = {
-            0: 0,    # "100TL Bonus" - top position
-            1: 90,   # "Ödül Kazanamadınız" - right position
-            2: 180,  # "250TL Bonus" - bottom position
-            3: 270   # "Ödül Kazanamadınız" - left position
+            0: 45,    # "100TL Bonus" - center of segment (top-left)
+            1: 135,   # "Ödül Kazanamadınız" - center of segment (top-right)
+            2: 225,   # "250TL Bonus" - center of segment (bottom-right)
+            3: 315    # "Ödül Kazanamadınız" - center of segment (bottom-left)
         }
 
         # Calculate final rotation to ensure it stops at the correct position
