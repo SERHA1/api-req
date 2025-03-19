@@ -471,10 +471,10 @@ def spin():
 
         # Update the segment angles to ensure the wheel stops at the center of each segment
         segment_angles = {
-            0: 315,  # "100TL Bonus" - center of segment (top-left)
-            1: 45,   # "Ödül Kazanamadınız" - center of segment (top-right)
-            2: 135,  # "250TL Bonus" - center of segment (bottom-right)
-            3: 225   # "Ödül Kazanamadınız" - center of segment (bottom-left)
+            0: 45,    # "100TL Bonus" - center of segment (top-left)
+            1: 135,   # "Ödül Kazanamadınız" - center of segment (top-right)
+            2: 225,   # "250TL Bonus" - center of segment (bottom-right)
+            3: 315    # "Ödül Kazanamadınız" - center of segment (bottom-left)
         }
 
         # Calculate final rotation to ensure it stops at the center of the segment
@@ -559,6 +559,7 @@ def spin():
             "success": True,
             "rotation": final_rotation,
             "message": api_message,
+            "position": winning_segment['position'],
             "api_success": api_success,
             "redirect_url": "https://www.bhspwa41.com/tr/"
         })
