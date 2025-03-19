@@ -581,5 +581,149 @@ def spin():
             "redirect_url": "https://www.bhspwa41.com/tr/"
         })
 
+@app.route('/create/list')
+def list_results():
+    try:
+        # Query to join the two tables and get combined results
+        cur.execute("""
+            SELECT u.party_id, u.used_at, u.game_id, 
+                   g.result_type, g.amount, g.bonus_plan_id, g.played_at
+            FROM used_party_ids u
+            LEFT JOIN game_results g ON u.game_id = g.id
+            ORDER BY u.used_at DESC
+        """)
+        results = cur.fetchall()
+        
+        # Format the results for display
+        formatted_results = []
+        for row in results:
+            formatted_results.append({
+                'party_id': row[0],
+                'used_at': row[1],
+                'game_id': row[2],
+                'result_type': row[3],
+                'amount': row[4],
+                'bonus_plan_id': row[5],
+                'played_at': row[6]
+            })
+        
+        return render_template('create/list.html', results=formatted_results)
+    except Exception as e:
+        print(f"Error in list_results: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return "An error occurred while retrieving the data."
+
+@app.route('/create/crypt', methods=['GET', 'POST'])
+def crypt_tool():
+    single_result = None
+    bulk_results = None
+    
+    if request.method == 'POST':
+        # Check if it's a single encryption request
+        if 'single_party_id' in request.form:
+            party_id = request.form['single_party_id']
+            encrypted = encrypt_data({'userId': party_id, 'amount': 0})
+            single_result = {
+                'party_id': party_id,
+                'hash': encrypted,
+                'link': f"https://api-req-z5oc.onrender.com/webhook?data={encrypted}"
+            }
+        
+        # Check if it's a CSV upload
+        elif 'csv_file' in request.files:
+            file = request.files['csv_file']
+            if file and file.filename.endswith('.csv'):
+                # Process the CSV file
+                import csv
+                from io import StringIO
+                
+                # Read the CSV file
+                csv_content = file.read().decode('utf-8')
+                csv_file = StringIO(csv_content)
+                csv_reader = csv.reader(csv_file)
+                
+                # Process each row
+                bulk_results = []
+                for row in csv_reader:
+                    if row and len(row) > 0:
+                        party_id = row[0].strip()
+                        encrypted = encrypt_data({'userId': party_id, 'amount': 0})
+                        bulk_results.append({
+                            'party_id': party_id,
+                            'hash': encrypted,
+                            'link': f"https://api-req-z5oc.onrender.com/webhook?data={encrypted}"
+                        })
+    
+    return render_template('create/crypt.html', single_result=single_result, bulk_results=bulk_results)
+
+# Function to encrypt data
+def encrypt_data(data):
+    # Convert data to JSON string
+    json_data = json.dumps(data)
+    
+    # Pad the data (PKCS7 padding)
+    block_size = 16
+    padding_length = block_size - (len(json_data) % block_size)
+    padded_data = json_data + chr(padding_length) * padding_length
+    
+    # Generate a random IV
+    iv = os.urandom(16)
+    
+    # Create cipher and encrypt
+    cipher = AES.new(SECRET_KEY, AES.MODE_CBC, iv)
+    encrypted_data = cipher.encrypt(padded_data.encode('utf-8'))
+    
+    # Combine IV and encrypted data, then encode with base64
+    result = base64.urlsafe_b64encode(iv + encrypted_data).decode('utf-8')
+    
+    return result
+
+# Add a route to download CSV of encrypted data
+@app.route('/create/download_csv', methods=['POST'])
+def download_csv():
+    try:
+        # Get the data from the form
+        data = request.form.get('csv_data')
+        if not data:
+            return "No data provided", 400
+        
+        # Parse the JSON data
+        parsed_data = json.loads(data)
+        
+        # Create a CSV in memory
+        from io import StringIO
+        import csv
+        
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['Party ID', 'Hash', 'Link'])
+        
+        # Write data rows
+        for item in parsed_data:
+            writer.writerow([
+                item['party_id'],
+                item['hash'],
+                item['link']
+            ])
+        
+        # Prepare the response
+        output.seek(0)
+        
+        from flask import Response
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=encrypted_data.csv"}
+        )
+    
+    except Exception as e:
+        print(f"Error in download_csv: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return "An error occurred while generating the CSV file.", 500
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
