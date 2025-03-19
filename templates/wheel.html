@@ -12,6 +12,7 @@
             flex-direction: column;
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
+            user-select: none;
         }
         
         .wheel-container {
@@ -19,6 +20,7 @@
             width: 400px;
             height: 400px;
             margin: 20px;
+            pointer-events: none;
         }
         
         .wheel {
@@ -49,35 +51,6 @@
             z-index: 2;
         }
         
-        .segment-text {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform-origin: 0 0;
-            color: white;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            font-size: 16px;
-            width: 120px;
-            text-align: center;
-        }
-        
-        .segment-text:nth-child(1) {
-            transform: rotate(45deg) translateY(-140px);
-        }
-        
-        .segment-text:nth-child(2) {
-            transform: rotate(135deg) translateY(-140px);
-        }
-        
-        .segment-text:nth-child(3) {
-            transform: rotate(225deg) translateY(-140px);
-        }
-        
-        .segment-text:nth-child(4) {
-            transform: rotate(315deg) translateY(-140px);
-        }
-        
         .pointer {
             position: absolute;
             top: -30px;
@@ -102,7 +75,7 @@
             transition: background-color 0.3s;
         }
         
-        .spin-button:hover {
+        .spin-button:hover:not(:disabled) {
             background-color: #555;
         }
         
@@ -151,139 +124,73 @@
         <div class="pointer"></div>
         <div class="wheel" id="wheel">
             <div class="wheel-center"></div>
-            <div class="segment-text">Sorry No Award</div>
-            <div class="segment-text">100TL Bonus</div>
-            <div class="segment-text">Sorry No Award</div>
-            <div class="segment-text">250TL Bonus</div>
         </div>
     </div>
     <button class="spin-button" id="spinButton">SPIN THE WHEEL</button>
     <div class="result-message" id="resultMessage"></div>
 
     <script>
-        const GAME_TOKEN = '{{ token }}';  // Get token from server
-    </script>
+        (function() {
+            const wheel = document.getElementById('wheel');
+            const spinButton = document.getElementById('spinButton');
+            const resultMessage = document.getElementById('resultMessage');
+            let isSpinning = false;
 
-    <script>
-        const wheel = document.getElementById('wheel');
-        const spinButton = document.getElementById('spinButton');
-        const resultMessage = document.getElementById('resultMessage');
-        let canSpin = true;
-        let isSpinning = false;
-
-        // Define segments (0-3 clockwise from top)
-        const segments = [
-            { type: 'lose', text: 'Sorry No Award', angle: 45 },
-            { type: 'win', text: 'Win 100TL Bonus', amount: 100, planId: 2222, angle: 135 },
-            { type: 'lose', text: 'Sorry No Award', angle: 225 },
-            { type: 'win', text: 'Win 250TL Bonus', amount: 250, planId: 4444, angle: 315 }
-        ];
-
-        async function verifyCanPlay() {
-            try {
-                const response = await fetch('/verify_play', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                const data = await response.json();
-                return data.valid;
-            } catch (error) {
-                return false;
-            }
-        }
-
-        function getRandomSegment() {
-            // Server-side entropy for random number generation
-            const array = new Uint32Array(1);
-            crypto.getRandomValues(array);
-            return array[0] % segments.length;
-        }
-
-        function calculateSpinAngle(segmentIndex) {
-            // Number of complete spins (between 5 and 8 full rotations)
-            const fullSpins = (Math.floor(Math.random() * 4) + 5) * 360;
-            
-            // Target angle for the chosen segment
-            const targetAngle = segments[segmentIndex].angle;
-            
-            // Total rotation will be full spins plus the target angle
-            return fullSpins + targetAngle;
-        }
-
-        spinButton.addEventListener('click', async () => {
-            if (!canSpin || isSpinning) return;
-            
-            // Verify play eligibility
-            const canPlay = await verifyCanPlay();
-            if (!canPlay) {
-                resultMessage.textContent = 'This game session has expired.';
-                resultMessage.style.display = 'block';
-                window.location.href = 'https://www.bhspwa41.com/tr/';
-                return;
-            }
-
-            isSpinning = true;
-            canSpin = false;
-            spinButton.disabled = true;
-            resultMessage.style.display = 'none';
-
-            const segmentIndex = getRandomSegment();
-            const finalRotation = calculateSpinAngle(segmentIndex);
-            
-            wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-            wheel.style.transform = `rotate(${finalRotation}deg)`;
-
-            setTimeout(async () => {
-                const segment = segments[segmentIndex];
+            spinButton.addEventListener('click', async () => {
+                if (isSpinning) return;
+                
                 try {
-                    const response = await fetch('/process_game_result', {
+                    isSpinning = true;
+                    spinButton.disabled = true;
+                    resultMessage.style.display = 'none';
+
+                    const response = await fetch('/spin', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            token: GAME_TOKEN,
-                            result_type: segment.type,
-                            amount: segment.amount,
-                            planId: segment.planId
+                            token: '{{ token }}'
                         })
                     });
-                    
+
                     const data = await response.json();
-                    resultMessage.textContent = data.message;
-                    resultMessage.style.display = 'block';
                     
+                    if (!data.success) {
+                        throw new Error(data.message);
+                    }
+
+                    wheel.style.transform = `rotate(${data.rotation}deg)`;
+
                     setTimeout(() => {
-                        window.location.href = data.redirect_url;
-                    }, 3000);
+                        resultMessage.textContent = data.message;
+                        resultMessage.style.display = 'block';
+                        
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 3000);
+                    }, 4100);
+
                 } catch (error) {
-                    resultMessage.textContent = 'An error occurred. Please try again.';
+                    resultMessage.textContent = error.message || 'An error occurred';
                     resultMessage.style.display = 'block';
-                    window.location.href = 'https://www.bhspwa41.com/tr/';
+                    setTimeout(() => {
+                        window.location.href = 'https://www.bhspwa41.com/tr/';
+                    }, 2000);
                 }
-            }, 4100);
-        });
+            });
 
-        // Prevent any tampering with the wheel during spin
-        wheel.addEventListener('transitionend', () => {
-            wheel.style.transition = 'none';
-            isSpinning = false;
-        });
+            wheel.addEventListener('transitionend', () => {
+                isSpinning = false;
+            });
 
-        // Prevent developer tools manipulation
-        Object.freeze(segments);
-        
-        // Disable right-click
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
-        
-        // Prevent keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.altKey || e.shiftKey) {
-                e.preventDefault();
-            }
-        });
+            // Security measures
+            window.addEventListener('contextmenu', e => e.preventDefault());
+            window.addEventListener('keydown', e => {
+                if (e.ctrlKey || e.altKey || e.shiftKey) e.preventDefault();
+            });
+            window.addEventListener('selectstart', e => e.preventDefault());
+        })();
     </script>
 </body>
 </html> 
