@@ -473,37 +473,38 @@ def spin():
                 "redirect_url": "https://www.bhspwa41.com/tr/"
             })
 
-        # Generate random result - ensure it's truly random
-        winning_index = random.randint(0, 3)
-        print(f"Selected segment index: {winning_index}")
+        # Directly assign the visual end position first (where the wheel will visually stop)
+        # 0: Red (Ödül Kazanamadınız)
+        # 1: Light Green (100TL)
+        # 2: Medium Green (150TL)
+        # 3: Dark Green (250TL)
+        visual_index = random.randint(0, 3)
         
-        # Define the segments based on the wheel's visual layout
+        # Map visual index to the corresponding segment data
         segments = [
-            {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız'},
-            {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747},
-            {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747},
-            {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747}
+            {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},
+            {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},
+            {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green'},
+            {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green'}
         ]
         
-        winning_segment = segments[winning_index]
-        print(f"Selected segment: {winning_segment}")
+        winning_segment = segments[visual_index]
         
-        # Calculate rotation to stop at the selected segment
-        # Each segment is 90 degrees, and we want to stop at the center of the segment
-        segment_center = winning_index * 90 + 45
+        # Calculate rotation to ensure the wheel stops at the selected visual segment
+        # Each segment is 90 degrees, we want to stop at the middle (45 degrees into the segment)
+        segment_center = visual_index * 90 + 45
         
-        # Add multiple full rotations for effect
-        full_spins = random.randint(5, 8) * 360
-        final_rotation = full_spins + segment_center
+        # Add full rotations for effect (5-8 full rotations)
+        full_rotations = random.randint(5, 8) * 360
+        final_rotation = full_rotations + segment_center
         
-        print(f"Segment colors: Red=0, Green=1, Yellow=2, Blue=3")
-        print(f"Selected segment index: {winning_index}")
-        print(f"Selected segment color: {['Red', 'Green', 'Yellow', 'Blue'][winning_index]}")
-        print(f"Selected segment text: {winning_segment['text']}")
+        print(f"Visual segment index: {visual_index}")
+        print(f"Visual segment: {winning_segment['text']}")
+        print(f"Segment center: {segment_center} degrees")
         print(f"Final rotation: {final_rotation} degrees")
-        print(f"Final position after rotation: {final_rotation % 360}")
-
-        # Store result in database first
+        print(f"Final position after rotation: {final_rotation % 360} degrees")
+        
+        # Process result based on the visual segment
         if winning_segment['type'] == 'win':
             print(f"WIN result: {winning_segment['amount']}TL")
             game_id = store_game_result(
@@ -515,7 +516,8 @@ def spin():
             
             # Process bonus API call
             api_success = True
-            api_message = ""
+            api_message = winning_segment['text']
+            
             try:
                 json_body = {
                     "partyId": party_id,
@@ -553,8 +555,6 @@ def spin():
                     print(f"Bonus API failed with status {response.status_code}: {response.text}")
                     api_success = False
                     api_message = "Bonus API request failed. Please contact support."
-                else:
-                    api_message = winning_segment['text']
             except Exception as api_error:
                 print(f"API call error: {str(api_error)}")
                 api_success = False
@@ -581,6 +581,8 @@ def spin():
             "rotation": final_rotation,
             "message": api_message,
             "position": winning_segment['position'],
+            "segment_index": visual_index,
+            "segment_color": winning_segment['color'],
             "api_success": api_success,
             "redirect_url": "https://www.bhspwa41.com/tr/"
         })
