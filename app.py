@@ -726,4 +726,6 @@ def download_csv():
         return "An error occurred while generating the CSV file.", 500
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Get the port from the environment variable or use 5000 as default
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
