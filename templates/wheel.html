@@ -170,6 +170,11 @@
             const spinButton = document.getElementById('spinButton');
             const resultMessage = document.getElementById('resultMessage');
             let isSpinning = false;
+            
+            // Get token from server - make sure it's properly escaped
+            const GAME_TOKEN = "{{ token }}";
+            
+            console.log("Token received:", GAME_TOKEN ? "Yes" : "No");
 
             async function handleSpin() {
                 if (isSpinning) return;
@@ -178,14 +183,18 @@
                     isSpinning = true;
                     spinButton.disabled = true;
                     resultMessage.style.display = 'none';
-
+                    
+                    console.log("Sending spin request with token");
+                    
                     const response = await fetch('/spin', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: '{{ token }}' })
+                        body: JSON.stringify({ token: GAME_TOKEN })
                     });
 
                     const data = await response.json();
+                    console.log("Spin response:", data);
+                    
                     if (!data.success) throw new Error(data.message);
 
                     // Animate wheel to server-determined position
@@ -201,6 +210,7 @@
                     }, 4100);
 
                 } catch (error) {
+                    console.error("Spin error:", error);
                     resultMessage.textContent = error.message || 'An error occurred';
                     resultMessage.style.display = 'block';
                     setTimeout(() => {

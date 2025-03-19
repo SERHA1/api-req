@@ -14,6 +14,11 @@ import random
 
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(16)  # Generate a secure secret key
+app.config['SESSION_TYPE'] = 'filesystem'  # Use filesystem-based sessions
+app.config['SESSION_PERMANENT'] = False  # Make sessions non-permanent
+app.config['SESSION_USE_SIGNER'] = True  # Sign the session cookie
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 
 # Load environment variables
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback_key").encode()
@@ -106,9 +111,6 @@ def decrypt_data(encrypted_data, secret_key):
     # Convert the decrypted string to a dictionary (assuming it's a valid JSON string)
     return json.loads(decrypted_string)
 
-# Add this at the top with other configurations
-app.secret_key = secrets.token_hex(16)  # Secure secret key for sessions
-
 # Define game segments on server side
 GAME_SEGMENTS = [
     {'position': 0, 'type': 'lose', 'text': 'Sorry No Award'},
@@ -130,6 +132,7 @@ def webhook():
     encrypted_data = request.args.get("data")
     
     if not encrypted_data:
+        print("Missing encrypted data")
         return generate_html_response("Invalid request.", "https://www.bhspwa41.com/tr/")
 
     try:
@@ -138,6 +141,7 @@ def webhook():
         
         # Check if user already played
         if is_party_id_used(party_id):
+            print(f"Party ID {party_id} already used")
             return generate_html_response("Bonus daha önce kullanılmış.", "https://www.bhspwa41.com/tr/")
             
         # Store session data for the game
@@ -146,9 +150,13 @@ def webhook():
         session['amount'] = decrypted_data["amount"]
         session['can_play'] = True
         
+        print(f"Rendering wheel for party_id: {party_id}")
         return render_template('wheel.html', token=session['game_token'])
         
     except Exception as e:
+        print(f"Error in webhook: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return generate_html_response("Hata Oluştu", "https://www.bhspwa41.com/tr/")
 
 @app.route('/process_game_result', methods=['POST'])
@@ -411,8 +419,15 @@ def process_win():
 @app.route('/spin', methods=['POST'])
 def spin():
     try:
+        # Debug logging
+        print("Spin request received")
+        print(f"Session can_play: {session.get('can_play')}")
+        print(f"Request token: {request.json.get('token')}")
+        print(f"Session token: {session.get('game_token')}")
+        
         # Check token and session
         if not session.get('can_play'):
+            print("Session cannot play")
             return jsonify({
                 "success": False,
                 "message": "Session expired",
@@ -421,6 +436,7 @@ def spin():
             
         # Verify token from request matches session token
         if request.json.get('token') != session.get('game_token'):
+            print("Token mismatch")
             return jsonify({
                 "success": False,
                 "message": "Invalid token",
@@ -429,6 +445,7 @@ def spin():
 
         party_id = session.get('party_id')
         if not party_id:
+            print("No party_id in session")
             return jsonify({
                 "success": False,
                 "message": "Invalid session",
@@ -437,6 +454,7 @@ def spin():
             
         # Check if already played
         if is_party_id_used(party_id):
+            print(f"Party ID {party_id} already used")
             return jsonify({
                 "success": False,
                 "message": "Already played",
@@ -445,11 +463,13 @@ def spin():
 
         # Generate random result
         winning_segment = random.choice(WHEEL_SEGMENTS)
+        print(f"Selected segment: {winning_segment}")
         
         # Calculate final rotation
         full_spins = random.randint(5, 8) * 360  # 5-8 full rotations
         segment_angle = winning_segment['position'] * 90  # Each segment is 90 degrees
         final_rotation = full_spins + segment_angle + 45  # +45 to point to center of segment
+        print(f"Final rotation: {final_rotation}")
 
         # Store result in database
         if winning_segment['type'] == 'win':
@@ -501,6 +521,8 @@ def spin():
         store_party_id(party_id)
         session['can_play'] = False
 
+        # Return success response
+        print("Returning success response")
         return jsonify({
             "success": True,
             "rotation": final_rotation,
@@ -510,6 +532,8 @@ def spin():
 
     except Exception as e:
         print(f"Error in spin: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "message": "Error occurred",
