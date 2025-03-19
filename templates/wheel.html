@@ -177,6 +177,14 @@
             
             console.log("Token received:", GAME_TOKEN ? "Yes" : "No");
 
+            // Define fixed positions for each segment
+            const wheelPositions = [
+                { position: 0, rotation: 45 },   // Red (Ödül Kazanamadınız)
+                { position: 1, rotation: 135 },  // Light Green (100TL)
+                { position: 2, rotation: 225 },  // Medium Green (150TL)
+                { position: 3, rotation: 315 }   // Dark Green (250TL)
+            ];
+
             spinButton.addEventListener('click', async function() {
                 if (isSpinning) return;
                 
@@ -200,21 +208,30 @@
                         throw new Error(data.message);
                     }
 
-                    // Apply the rotation as inline style
-                    wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                    // Get the wheel position from the response
+                    const wheelPosition = data.wheel_position;
+                    console.log("Wheel position:", wheelPosition);
                     
-                    // Rotate the wheel to the final position
-                    wheel.style.transform = `rotate(${data.rotation}deg)`;
+                    // Find the rotation for this position
+                    const positionData = wheelPositions[wheelPosition];
+                    console.log("Position data:", positionData);
                     
-                    console.log("Wheel rotation applied:", data.rotation);
-                    console.log("Selected position:", data.position);
+                    // Calculate final rotation (add multiple spins for effect)
+                    const fullRotations = Math.floor(Math.random() * 3 + 5) * 360; // 5-8 full rotations
+                    const finalRotation = fullRotations + positionData.rotation;
+                    console.log("Final rotation:", finalRotation);
 
+                    // Apply the rotation
+                    wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                    wheel.style.transform = `rotate(${finalRotation}deg)`;
+                    
                     // Show result after animation
                     setTimeout(() => {
                         resultMessage.textContent = data.message;
                         resultMessage.style.display = 'block';
                         
                         console.log("Final wheel position:", wheel.style.transform);
+                        console.log("Reward text:", data.reward_text);
                         
                         // Only redirect if API was successful
                         if (data.api_success !== false) {
@@ -222,12 +239,6 @@
                                 window.location.href = data.redirect_url;
                             }, 3000);
                         }
-
-                        // Add inside the setTimeout after wheel stops
-                        console.log("Result data:", data);
-                        console.log("Visual segment index:", data.segment_index);
-                        console.log("Segment text:", data.segment_text);
-                        console.log("Final wheel position:", data.final_position_degrees + "°");
                     }, 4100);
 
                 } catch (error) {

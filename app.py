@@ -473,16 +473,15 @@ def spin():
                 "redirect_url": "https://www.bhspwa41.com/tr/"
             })
 
-        # COMPLETELY NEW APPROACH:
-        # 1. First decide what reward the user will get
-        # 2. Then calculate the rotation to ensure the wheel stops at the corresponding segment
+        # FIXED APPROACH: Use a fixed mapping between wheel position and reward
+        # This ensures the visual result always matches the reward
         
-        # Define all possible rewards
+        # Define the rewards with fixed wheel positions
         rewards = [
-            {'index': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},
-            {'index': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},
-            {'index': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green'},
-            {'index': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green'}
+            {'index': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red', 'wheel_position': 0},
+            {'index': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green', 'wheel_position': 1},
+            {'index': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green', 'wheel_position': 2},
+            {'index': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green', 'wheel_position': 3}
         ]
         
         # Randomly select a reward
@@ -491,26 +490,9 @@ def spin():
         
         print(f"Selected reward: {selected_reward['text']}")
         
-        # Map the reward to the correct wheel segment position
-        # This is the critical part - we need to ensure the wheel stops at the right segment
-        wheel_segment_positions = {
-            0: 45,   # Red segment (Ödül Kazanamadınız) - centered at 45°
-            1: 135,  # Light Green segment (100TL) - centered at 135°
-            2: 225,  # Medium Green segment (150TL) - centered at 225°
-            3: 315   # Dark Green segment (250TL) - centered at 315°
-        }
-        
-        # Calculate the rotation to stop at the selected segment
-        segment_center = wheel_segment_positions[selected_reward_index]
-        
-        # Add random full rotations for effect (5-8 rotations)
-        full_rotations = random.randint(5, 8) * 360
-        final_rotation = full_rotations + segment_center
-        
-        print(f"Selected reward index: {selected_reward_index}")
-        print(f"Segment center: {segment_center}°")
-        print(f"Final rotation: {final_rotation}°")
-        print(f"Final position after rotation: {final_rotation % 360}°")
+        # Instead of calculating a rotation angle, we'll send the wheel position directly
+        # The frontend will handle positioning the wheel correctly
+        wheel_position = selected_reward['wheel_position']
         
         # Process the selected reward
         if selected_reward['type'] == 'win':
@@ -582,16 +564,14 @@ def spin():
         store_party_id(party_id, game_id)
         session['can_play'] = False
 
-        # Return success response with the correct message
+        # Return success response with the wheel position
         print(f"Returning success response with message: {api_message}")
         return jsonify({
             "success": True,
-            "rotation": final_rotation,
+            "wheel_position": wheel_position,  # Send the wheel position instead of rotation
             "message": api_message,
-            "position": selected_reward_index,
-            "segment_index": selected_reward_index,
-            "segment_text": selected_reward['text'],
-            "final_position_degrees": final_rotation % 360,
+            "reward_index": selected_reward_index,
+            "reward_text": selected_reward['text'],
             "api_success": api_success,
             "redirect_url": "https://www.bhspwa41.com/tr/"
         })
