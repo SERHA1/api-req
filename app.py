@@ -113,18 +113,18 @@ def decrypt_data(encrypted_data, secret_key):
 
 # Define game segments on server side
 GAME_SEGMENTS = [
-    {'position': 0, 'type': 'lose', 'text': 'Sorry No Award'},
-    {'position': 1, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 2222},
-    {'position': 2, 'type': 'lose', 'text': 'Sorry No Award'},
-    {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 4444}
+    {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız'},
+    {'position': 1, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 14747},
+    {'position': 2, 'type': 'lose', 'text': 'Ödül Kazanamadınız'},
+    {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 14747}
 ]
 
 # Update the WHEEL_SEGMENTS to match the wheel's visual layout
 WHEEL_SEGMENTS = [
-    {'position': 0, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 2222},
-    {'position': 1, 'type': 'lose', 'text': 'Sorry No Award'},
-    {'position': 2, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 4444},
-    {'position': 3, 'type': 'lose', 'text': 'Sorry No Award'}
+    {'position': 0, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 14747},
+    {'position': 1, 'type': 'lose', 'text': 'Ödül Kazanamadınız'},
+    {'position': 2, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 14747},
+    {'position': 3, 'type': 'lose', 'text': 'Ödül Kazanamadınız'}
 ]
 
 @app.route('/webhook', methods=['GET'])
@@ -461,18 +461,22 @@ def spin():
                 "redirect_url": "https://www.bhspwa41.com/tr/"
             })
 
-        # Generate random result
+        # Add this before the random selection
+        print("Available segments:", WHEEL_SEGMENTS)
+        # Generate random result - ensure it's truly random
         winning_segment = random.choice(WHEEL_SEGMENTS)
         print(f"Selected segment: {winning_segment}")
-        
+        # After selection
+        print(f"Selected segment position: {winning_segment['position']}, type: {winning_segment['type']}, text: {winning_segment['text']}")
+
         # Update the segment angles to ensure the wheel stops at the center of each segment
         segment_angles = {
-            0: 45,    # "100TL Bonus" - center of segment
-            1: 135,   # "Sorry No Award" - center of segment
-            2: 225,   # "250TL Bonus" - center of segment
-            3: 315    # "Sorry No Award" - center of segment
+            0: 45,    # "100TL Bonus" - center of segment (top-left)
+            1: 135,   # "Ödül Kazanamadınız" - center of segment (top-right)
+            2: 225,   # "250TL Bonus" - center of segment (bottom-right)
+            3: 315    # "Ödül Kazanamadınız" - center of segment (bottom-left)
         }
-        
+
         # Calculate final rotation to ensure it stops at the center of the segment
         full_spins = random.randint(5, 8) * 360
         final_rotation = full_spins + segment_angles[winning_segment['position']]
