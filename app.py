@@ -10,6 +10,7 @@ import hmac
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from urllib.parse import urlparse  # Make sure to import urlparse
 import secrets
+import random
 
 
 app = Flask(__name__)
@@ -107,6 +108,14 @@ def decrypt_data(encrypted_data, secret_key):
 
 # Add this at the top with other configurations
 app.secret_key = secrets.token_hex(16)  # Secure secret key for sessions
+
+# Define game segments on server side
+GAME_SEGMENTS = [
+    {'position': 0, 'type': 'lose', 'text': 'Sorry No Award'},
+    {'position': 1, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 2222},
+    {'position': 2, 'type': 'lose', 'text': 'Sorry No Award'},
+    {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 4444}
+]
 
 @app.route('/webhook', methods=['GET'])
 def webhook():
@@ -386,6 +395,85 @@ def process_win():
     except Exception as e:
         conn.rollback()
         return jsonify({
+            "message": "Error occurred",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+@app.route('/spin', methods=['POST'])
+def spin():
+    if not session.get('can_play') or request.json.get('token') != session.get('game_token'):
+        return jsonify({
+            "success": False,
+            "message": "Invalid session",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+    party_id = session.get('party_id')
+    if not party_id or is_party_id_used(party_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid session or already played",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+    try:
+        # Generate random result server-side
+        winning_segment = random.choice(GAME_SEGMENTS)
+        
+        # Calculate final rotation (5-8 full spins + segment position)
+        full_spins = random.randint(5, 8) * 360
+        segment_angle = winning_segment['position'] * 90 + 45  # 45° offset for center of segment
+        final_rotation = full_spins + segment_angle
+
+        # Store result before sending response
+        result_type = winning_segment['type']
+        amount = winning_segment.get('amount')
+        bonus_plan_id = winning_segment.get('planId')
+
+        # Store game result
+        store_game_result(party_id, result_type, amount, bonus_plan_id)
+        store_party_id(party_id)
+        session['can_play'] = False
+
+        # If it's a win, process the bonus
+        if result_type == 'win':
+            # Prepare API request
+            json_body = {
+                "partyId": party_id,
+                "brandId": 23,
+                "bonusPlanID": bonus_plan_id,
+                "amount": amount,
+                "reason": "test1",
+                "timestamp": int(time.time() * 1000)
+            }
+
+            checksum = hmac.new(CHECKSUM_SECRET_KEY, 
+                              f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(), 
+                              hashlib.sha512)
+            
+            headers = {
+                'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
+                'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
+            }
+
+            response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", 
+                                   json=json_body, 
+                                   headers=headers)
+
+            if response.status_code != 200:
+                raise Exception("Bonus API request failed")
+
+        return jsonify({
+            "success": True,
+            "rotation": final_rotation,
+            "message": f"Congratulations! You won {amount}TL Bonus Award" if result_type == 'win' else "Sorry No Award",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            "success": False,
             "message": "Error occurred",
             "redirect_url": "https://www.bhspwa41.com/tr/"
         })
