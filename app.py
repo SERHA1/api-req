@@ -473,32 +473,30 @@ def spin():
                 "redirect_url": "https://www.bhspwa41.com/tr/"
             })
 
-        # Add this before the random selection
-        print("Available segments:", WHEEL_SEGMENTS)
-        
         # Generate random result - ensure it's truly random
-        winning_segment = random.choice(WHEEL_SEGMENTS)
+        winning_index = random.randint(0, 3)
+        print(f"Selected segment index: {winning_index}")
+        
+        # Define the segments based on the wheel's visual layout
+        segments = [
+            {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız'},
+            {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747},
+            {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747},
+            {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747}
+        ]
+        
+        winning_segment = segments[winning_index]
         print(f"Selected segment: {winning_segment}")
-        print(f"Selected segment position: {winning_segment['position']}, type: {winning_segment['type']}, text: {winning_segment['text']}")
-
-        # Define the segment angles based on the wheel's visual layout
-        segment_angles = {
-            0: 315,  # "100TL Ödül Kazandınız" - top-right (light green)
-            1: 225,  # "150TL Ödül Kazandınız" - bottom-right (medium green)
-            2: 135,  # "250TL Ödül Kazandınız" - bottom-left (dark green)
-            3: 45    # "Ödül Kazanamadınız" - top-left (red)
-        }
-
-        # Calculate final rotation to ensure it stops at the correct position
+        
+        # Calculate rotation to stop at the selected segment
+        # Each segment is 90 degrees, and we want to stop at the center of the segment
+        segment_center = winning_index * 90 + 45
+        
+        # Add multiple full rotations for effect
         full_spins = random.randint(5, 8) * 360
-        final_rotation = full_spins + segment_angles[winning_segment['position']]
-        print(f"Final rotation: {final_rotation} degrees for position {winning_segment['position']}")
-
-        # Add this after calculating the final rotation
-        print(f"Segment angles: {segment_angles}")
-        print(f"Winning segment position: {winning_segment['position']}")
-        print(f"Angle for winning segment: {segment_angles[winning_segment['position']]}")
-        print(f"Final rotation: {final_rotation}")
+        final_rotation = full_spins + segment_center
+        
+        print(f"Final rotation: {final_rotation} degrees")
         print(f"Final position after rotation: {final_rotation % 360}")
 
         # Store result in database first
@@ -552,7 +550,7 @@ def spin():
                     api_success = False
                     api_message = "Bonus API request failed. Please contact support."
                 else:
-                    api_message = f"Congratulations! {winning_segment['amount']}TL Bonus has been added to your account."
+                    api_message = winning_segment['text']
             except Exception as api_error:
                 print(f"API call error: {str(api_error)}")
                 api_success = False
