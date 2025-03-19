@@ -52,6 +52,36 @@
             z-index: 2;
         }
         
+        .segment-text {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform-origin: 0 0;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            font-size: 16px;
+            width: 120px;
+            text-align: center;
+            pointer-events: none;
+        }
+        
+        .segment-text:nth-child(2) {
+            transform: rotate(45deg) translateY(-140px);
+        }
+        
+        .segment-text:nth-child(3) {
+            transform: rotate(135deg) translateY(-140px);
+        }
+        
+        .segment-text:nth-child(4) {
+            transform: rotate(225deg) translateY(-140px);
+        }
+        
+        .segment-text:nth-child(5) {
+            transform: rotate(315deg) translateY(-140px);
+        }
+        
         .pointer {
             position: absolute;
             top: -30px;
@@ -125,6 +155,10 @@
         <div class="pointer"></div>
         <div class="wheel" id="wheel">
             <div class="wheel-center"></div>
+            <div class="segment-text">Sorry No Award</div>
+            <div class="segment-text">100TL Bonus</div>
+            <div class="segment-text">Sorry No Award</div>
+            <div class="segment-text">250TL Bonus</div>
         </div>
     </div>
     <button class="spin-button" id="spinButton">SPIN THE WHEEL</button>

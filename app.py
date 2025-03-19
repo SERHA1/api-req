@@ -308,6 +308,7 @@ def wheel_game():
         session['amount'] = decrypted_data["amount"]
         session['can_play'] = True
         
+        # Pass the token to the template
         return render_template('wheel.html', token=session['game_token'])
         
     except Exception as e:
@@ -409,22 +410,39 @@ def process_win():
 
 @app.route('/spin', methods=['POST'])
 def spin():
-    if not session.get('can_play') or request.json.get('token') != session.get('game_token'):
-        return jsonify({
-            "success": False,
-            "message": "Invalid session",
-            "redirect_url": "https://www.bhspwa41.com/tr/"
-        })
-
-    party_id = session.get('party_id')
-    if not party_id or is_party_id_used(party_id):
-        return jsonify({
-            "success": False,
-            "message": "Invalid session or already played",
-            "redirect_url": "https://www.bhspwa41.com/tr/"
-        })
-
     try:
+        # Check token and session
+        if not session.get('can_play'):
+            return jsonify({
+                "success": False,
+                "message": "Session expired",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+            
+        # Verify token from request matches session token
+        if request.json.get('token') != session.get('game_token'):
+            return jsonify({
+                "success": False,
+                "message": "Invalid token",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+
+        party_id = session.get('party_id')
+        if not party_id:
+            return jsonify({
+                "success": False,
+                "message": "Invalid session",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+            
+        # Check if already played
+        if is_party_id_used(party_id):
+            return jsonify({
+                "success": False,
+                "message": "Already played",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+
         # Generate random result
         winning_segment = random.choice(WHEEL_SEGMENTS)
         
@@ -491,7 +509,7 @@ def spin():
         })
 
     except Exception as e:
-        conn.rollback()
+        print(f"Error in spin: {str(e)}")
         return jsonify({
             "success": False,
             "message": "Error occurred",
