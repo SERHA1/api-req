@@ -31,12 +31,13 @@
             transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
             transform: rotate(0deg);
             background: conic-gradient(
-                #FF6B6B 0deg 90deg,
-                #4ECDC4 90deg 180deg,
-                #45B7D1 180deg 270deg,
-                #96CEB4 270deg 360deg
+                #FF6B6B 0deg 90deg,    /* Segment 1 */
+                #4ECDC4 90deg 180deg,  /* Segment 2 */
+                #45B7D1 180deg 270deg, /* Segment 3 */
+                #96CEB4 270deg 360deg  /* Segment 4 */
             );
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            pointer-events: none;
         }
         
         .wheel-center {
@@ -136,7 +137,7 @@
             const resultMessage = document.getElementById('resultMessage');
             let isSpinning = false;
 
-            spinButton.addEventListener('click', async () => {
+            async function handleSpin() {
                 if (isSpinning) return;
                 
                 try {
@@ -146,26 +147,20 @@
 
                     const response = await fetch('/spin', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            token: '{{ token }}'
-                        })
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: '{{ token }}' })
                     });
 
                     const data = await response.json();
-                    
-                    if (!data.success) {
-                        throw new Error(data.message);
-                    }
+                    if (!data.success) throw new Error(data.message);
 
+                    // Animate wheel to server-determined position
                     wheel.style.transform = `rotate(${data.rotation}deg)`;
 
+                    // Show result after animation
                     setTimeout(() => {
                         resultMessage.textContent = data.message;
                         resultMessage.style.display = 'block';
-                        
                         setTimeout(() => {
                             window.location.href = data.redirect_url;
                         }, 3000);
@@ -178,13 +173,12 @@
                         window.location.href = 'https://www.bhspwa41.com/tr/';
                     }, 2000);
                 }
-            });
+            }
 
-            wheel.addEventListener('transitionend', () => {
-                isSpinning = false;
-            });
+            spinButton.addEventListener('click', handleSpin);
+            wheel.addEventListener('transitionend', () => isSpinning = false);
 
-            // Security measures
+            // Prevent tampering
             window.addEventListener('contextmenu', e => e.preventDefault());
             window.addEventListener('keydown', e => {
                 if (e.ctrlKey || e.altKey || e.shiftKey) e.preventDefault();

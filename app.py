@@ -117,6 +117,14 @@ GAME_SEGMENTS = [
     {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 4444}
 ]
 
+# Add these constants at the top with other configurations
+WHEEL_SEGMENTS = [
+    {'position': 0, 'type': 'lose', 'text': 'Sorry No Award'},
+    {'position': 1, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 2222},
+    {'position': 2, 'type': 'lose', 'text': 'Sorry No Award'},
+    {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 4444}
+]
+
 @app.route('/webhook', methods=['GET'])
 def webhook():
     encrypted_data = request.args.get("data")
@@ -417,56 +425,68 @@ def spin():
         })
 
     try:
-        # Generate random result server-side
-        winning_segment = random.choice(GAME_SEGMENTS)
+        # Generate random result
+        winning_segment = random.choice(WHEEL_SEGMENTS)
         
-        # Calculate final rotation (5-8 full spins + segment position)
-        full_spins = random.randint(5, 8) * 360
-        segment_angle = winning_segment['position'] * 90 + 45  # 45° offset for center of segment
-        final_rotation = full_spins + segment_angle
+        # Calculate final rotation
+        full_spins = random.randint(5, 8) * 360  # 5-8 full rotations
+        segment_angle = winning_segment['position'] * 90  # Each segment is 90 degrees
+        final_rotation = full_spins + segment_angle + 45  # +45 to point to center of segment
 
-        # Store result before sending response
-        result_type = winning_segment['type']
-        amount = winning_segment.get('amount')
-        bonus_plan_id = winning_segment.get('planId')
-
-        # Store game result
-        store_game_result(party_id, result_type, amount, bonus_plan_id)
-        store_party_id(party_id)
-        session['can_play'] = False
-
-        # If it's a win, process the bonus
-        if result_type == 'win':
-            # Prepare API request
+        # Store result in database
+        if winning_segment['type'] == 'win':
+            store_game_result(
+                party_id=party_id,
+                result_type='win',
+                amount=winning_segment['amount'],
+                bonus_plan_id=winning_segment['planId']
+            )
+            
+            # Process bonus API call
             json_body = {
                 "partyId": party_id,
                 "brandId": 23,
-                "bonusPlanID": bonus_plan_id,
-                "amount": amount,
+                "bonusPlanID": winning_segment['planId'],
+                "amount": winning_segment['amount'],
                 "reason": "test1",
                 "timestamp": int(time.time() * 1000)
             }
 
-            checksum = hmac.new(CHECKSUM_SECRET_KEY, 
-                              f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(), 
-                              hashlib.sha512)
+            checksum = hmac.new(
+                CHECKSUM_SECRET_KEY,
+                f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(),
+                hashlib.sha512
+            )
             
             headers = {
                 'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
                 'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
             }
 
-            response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", 
-                                   json=json_body, 
-                                   headers=headers)
+            response = requests.post(
+                "https://ps-secundus.gmntc.com/ips/bonus/trigger",
+                json=json_body,
+                headers=headers
+            )
 
             if response.status_code != 200:
                 raise Exception("Bonus API request failed")
+        else:
+            store_game_result(
+                party_id=party_id,
+                result_type='lose',
+                amount=None,
+                bonus_plan_id=None
+            )
+
+        # Mark as played
+        store_party_id(party_id)
+        session['can_play'] = False
 
         return jsonify({
             "success": True,
             "rotation": final_rotation,
-            "message": f"Congratulations! You won {amount}TL Bonus Award" if result_type == 'win' else "Sorry No Award",
+            "message": winning_segment['text'],
             "redirect_url": "https://www.bhspwa41.com/tr/"
         })
 
