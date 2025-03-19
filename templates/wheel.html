@@ -200,11 +200,11 @@
                         throw new Error(data.message);
                     }
 
-                    // Apply the rotation as inline style - adjust for clockwise rotation
+                    // Apply the rotation as inline style - use positive rotation
                     wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-                    wheel.style.transform = `rotate(-${data.rotation}deg)`;  // Note the negative sign
+                    wheel.style.transform = `rotate(${data.rotation}deg)`;
                     
-                    console.log("Wheel rotation applied:", -data.rotation);
+                    console.log("Wheel rotation applied:", data.rotation);
 
                     // Show result after animation
                     setTimeout(() => {
