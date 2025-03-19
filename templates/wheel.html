@@ -70,9 +70,9 @@
             font-size: 16px;
             width: 120px;
             text-align: center;
+            transform: rotate(45deg) translateY(-80px);
             left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%) rotate(45deg) translateY(-80px);
+            margin-left: -60px;
         }
         
         .wheel-center {
@@ -200,9 +200,12 @@
                         resultMessage.textContent = data.message;
                         resultMessage.style.display = 'block';
                         
-                        setTimeout(() => {
-                            window.location.href = data.redirect_url;
-                        }, 3000);
+                        // Only redirect if API was successful
+                        if (data.api_success !== false) {
+                            setTimeout(() => {
+                                window.location.href = data.redirect_url;
+                            }, 3000);
+                        }
                     }, 4100);
 
                 } catch (error) {

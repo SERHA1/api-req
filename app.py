@@ -489,6 +489,8 @@ def spin():
             )
             
             # Process bonus API call
+            api_success = True
+            api_message = ""
             try:
                 json_body = {
                     "partyId": party_id,
@@ -524,10 +526,14 @@ def spin():
 
                 if response.status_code != 200:
                     print(f"Bonus API failed with status {response.status_code}: {response.text}")
-                    # Continue execution even if API fails
+                    api_success = False
+                    api_message = "Bonus API request failed. Please contact support."
+                else:
+                    api_message = f"Congratulations! {winning_segment['amount']}TL Bonus has been added to your account."
             except Exception as api_error:
                 print(f"API call error: {str(api_error)}")
-                # Continue execution even if API fails
+                api_success = False
+                api_message = "Error processing bonus. Please contact support."
         else:
             print("LOSE result")
             store_game_result(
@@ -536,17 +542,20 @@ def spin():
                 amount=None,
                 bonus_plan_id=None
             )
+            api_success = True
+            api_message = winning_segment['text']
 
         # Mark as played
         store_party_id(party_id)
         session['can_play'] = False
 
         # Return success response with the correct message
-        print(f"Returning success response with message: {winning_segment['text']}")
+        print(f"Returning success response with message: {api_message}")
         return jsonify({
             "success": True,
             "rotation": final_rotation,
-            "message": winning_segment['text'],
+            "message": api_message,
+            "api_success": api_success,
             "redirect_url": "https://www.bhspwa41.com/tr/"
         })
 
