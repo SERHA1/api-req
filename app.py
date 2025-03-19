@@ -7,7 +7,7 @@ import psycopg2  # PostgreSQL connector
 from Crypto.Cipher import AES
 import hashlib
 import hmac
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 from urllib.parse import urlparse  # Make sure to import urlparse
 
 
@@ -184,6 +184,88 @@ def generate_html_response(message, redirect_url):
     </body>
     </html>
     """
+
+# Add new route for the wheel game
+@app.route('/wheel', methods=['GET'])
+def wheel_game():
+    encrypted_data = request.args.get("data")
+    
+    if not encrypted_data:
+        return jsonify({"status": "error", "message": "Missing encrypted data"}), 400
+
+    try:
+        decrypted_data = decrypt_data(encrypted_data, SECRET_KEY)
+        party_id = decrypted_data["userId"]
+        
+        # Check if user already played
+        if is_party_id_used(party_id):
+            return generate_html_response("Bonus daha önce kullanılmış.", "https://www.bhspwa41.com/tr/")
+            
+        # Store the party_id in session for later use
+        session['party_id'] = party_id
+        session['amount'] = decrypted_data["amount"]
+        
+        return render_template('wheel.html')
+        
+    except Exception as e:
+        return generate_html_response("Hata Oluştu", "https://www.bhspwa41.com/tr/")
+
+@app.route('/process_win')
+def process_win():
+    party_id = session.get('party_id')
+    amount = request.args.get('amount')
+    bonus_plan_id = request.args.get('planId')
+    
+    if not party_id:
+        return jsonify({
+            "message": "Session expired",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+    try:
+        # Store the party_id before processing
+        store_party_id(party_id)
+
+        # Prepare the API request
+        json_body = {
+            "partyId": party_id,
+            "brandId": 23,
+            "bonusPlanID": int(bonus_plan_id),
+            "amount": amount,
+            "reason": "test1",
+            "timestamp": int(time.time() * 1000)
+        }
+
+        checksum = hmac.new(CHECKSUM_SECRET_KEY, 
+                          f"{json_body['partyId']},{json_body['brandId']},{json_body['bonusPlanID']},{json_body['amount']},{json_body['reason']},{json_body['timestamp']}".encode(), 
+                          hashlib.sha512)
+        
+        headers = {
+            'Checksum-Fields': 'partyId,brandId,bonusPlanID,amount,reason,timestamp',
+            'Checksum': base64.b64encode(checksum.digest()).decode('utf-8')
+        }
+
+        response = requests.post("https://ps-secundus.gmntc.com/ips/bonus/trigger", 
+                               json=json_body, 
+                               headers=headers)
+
+        if response.status_code == 200:
+            return jsonify({
+                "message": f"Congratulations! You won {amount}TL Bonus Award",
+                "redirect_url": "https://www.bhspwa41.com/tr/"
+            })
+        
+        return jsonify({
+            "message": "Error processing bonus",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            "message": "Error occurred",
+            "redirect_url": "https://www.bhspwa41.com/tr/"
+        })
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

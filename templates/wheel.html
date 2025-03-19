@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Fortune Wheel</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        
+        .wheel-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            margin: 20px;
+        }
+        
+        .wheel {
+            width: 100%;
+            height: 100%;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+        
+        .spin-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        
+        .spin-button:hover {
+            background-color: #d32f2f;
+        }
+        
+        .spin-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background-color: #f44336;
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+        }
+        
+        .result-message {
+            font-size: 24px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <img src="https://i.ibb.co/wJKqGXm/wheel.png" class="wheel" id="wheel">
+    </div>
+    <button class="spin-button" id="spinButton">SPIN THE WHEEL</button>
+    <div class="result-message" id="resultMessage"></div>
+
+    <script>
+        const wheel = document.getElementById('wheel');
+        const spinButton = document.getElementById('spinButton');
+        const resultMessage = document.getElementById('resultMessage');
+        let canSpin = true;
+
+        // Define segments (0-3 clockwise from top)
+        const segments = [
+            { type: 'lose', text: 'Sorry No Award' },
+            { type: 'win', text: 'Win 100TL Bonus', amount: 100, planId: 2222 },
+            { type: 'lose', text: 'Sorry No Award' },
+            { type: 'win', text: 'Win 250TL Bonus', amount: 250, planId: 4444 }
+        ];
+
+        spinButton.addEventListener('click', () => {
+            if (!canSpin) return;
+            canSpin = false;
+            spinButton.disabled = true;
+            resultMessage.style.display = 'none';
+
+            // Random segment (0-3)
+            const segmentIndex = Math.floor(Math.random() * 4);
+            // Calculate rotation (at least 5 full spins + segment position)
+            const rotation = 1800 + (segmentIndex * 90);
+            
+            wheel.style.transform = `rotate(${rotation}deg)`;
+
+            setTimeout(() => {
+                const segment = segments[segmentIndex];
+                if (segment.type === 'win') {
+                    // Make API call with the corresponding bonus plan ID
+                    fetch(`/process_win?amount=${segment.amount}&planId=${segment.planId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            resultMessage.textContent = data.message;
+                            resultMessage.style.display = 'block';
+                            setTimeout(() => {
+                                window.location.href = data.redirect_url;
+                            }, 3000);
+                        });
+                } else {
+                    resultMessage.textContent = segment.text;
+                    resultMessage.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = 'https://www.bhspwa41.com/tr/';
+                    }, 3000);
+                }
+            }, 4000);
+        });
+    </script>
+</body>
+</html> 
