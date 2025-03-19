@@ -482,17 +482,25 @@ def spin():
         print(f"Selected segment position: {winning_segment['position']}, type: {winning_segment['type']}, text: {winning_segment['text']}")
 
         # Define the segment angles based on the wheel's visual layout
+        # These angles represent where the wheel should stop to point to each segment
         segment_angles = {
-            0: 315,  # "100TL Bonus" - center of segment (top-left)
-            1: 45,   # "Ödül Kazanamadınız" - center of segment (top-right)
-            2: 135,  # "250TL Bonus" - center of segment (bottom-right)
-            3: 225   # "Ödül Kazanamadınız" - center of segment (bottom-left)
+            0: 45,    # "100TL Ödül Kazandınız" - top-left (light green)
+            1: 135,   # "150TL Ödül Kazandınız" - top-right (medium green)
+            2: 225,   # "250TL Ödül Kazandınız" - bottom-right (dark green)
+            3: 315    # "Ödül Kazanamadınız" - bottom-left (red)
         }
 
         # Calculate final rotation to ensure it stops at the correct position
         full_spins = random.randint(5, 8) * 360
         final_rotation = full_spins + segment_angles[winning_segment['position']]
         print(f"Final rotation: {final_rotation} degrees for position {winning_segment['position']}")
+
+        # Add this after calculating the final rotation
+        print(f"Segment angles: {segment_angles}")
+        print(f"Winning segment position: {winning_segment['position']}")
+        print(f"Angle for winning segment: {segment_angles[winning_segment['position']]}")
+        print(f"Final rotation: {final_rotation}")
+        print(f"Final position after rotation: {final_rotation % 360}")
 
         # Store result in database first
         if winning_segment['type'] == 'win':
