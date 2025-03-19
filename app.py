@@ -471,12 +471,12 @@ def spin():
         # FIXED APPROACH: Use a fixed mapping between wheel position and reward
         # This ensures the visual result always matches the reward
         
-        # Define the rewards with fixed wheel positions
+        # Define the rewards with fixed wheel positions - CORRECTED MAPPING
         rewards = [
-            {'index': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red', 'wheel_position': 0},
-            {'index': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green', 'wheel_position': 1},
-            {'index': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green', 'wheel_position': 2},
-            {'index': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green', 'wheel_position': 3}
+            {'index': 0, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green', 'wheel_position': 0},
+            {'index': 1, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green', 'wheel_position': 1},
+            {'index': 2, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green', 'wheel_position': 2},
+            {'index': 3, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red', 'wheel_position': 3}
         ]
         
         # Randomly select a reward
