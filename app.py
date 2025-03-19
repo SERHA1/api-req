@@ -133,10 +133,10 @@ GAME_SEGMENTS = [
 
 # Update the WHEEL_SEGMENTS to match the new visual layout
 WHEEL_SEGMENTS = [
-    {'position': 0, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747},
-    {'position': 1, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747},
-    {'position': 2, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747},
-    {'position': 3, 'type': 'lose', 'text': 'Ödül Kazanamadınız'}
+    {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747},
+    {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747},
+    {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747},
+    {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız'}
 ]
 
 @app.route('/webhook', methods=['GET'])
