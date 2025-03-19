@@ -52,7 +52,8 @@ cur.execute("""
     CREATE TABLE IF NOT EXISTS used_party_ids (
         id SERIAL PRIMARY KEY,
         party_id TEXT UNIQUE NOT NULL,
-        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        game_id INTEGER
     );
 """)
 conn.commit()
@@ -70,26 +71,37 @@ cur.execute("""
 """)
 conn.commit()
 
+# First, add the game_id column to the used_party_ids table
+cur.execute("""
+    ALTER TABLE used_party_ids 
+    ADD COLUMN IF NOT EXISTS game_id INTEGER;
+""")
+conn.commit()
+
 # Function to check if the party_id is already used
 def is_party_id_used(party_id):
     cur.execute("SELECT 1 FROM used_party_ids WHERE party_id = %s", (str(party_id),))  # Cast party_id to string
     return cur.fetchone() is not None
 
-# Function to store the party_id
-def store_party_id(party_id):
-    cur.execute("INSERT INTO used_party_ids (party_id) VALUES (%s) ON CONFLICT DO NOTHING", (str(party_id),))
+# Update the store_party_id function to accept a game_id parameter
+def store_party_id(party_id, game_id=None):
+    cur.execute("INSERT INTO used_party_ids (party_id, game_id) VALUES (%s, %s) ON CONFLICT (party_id) DO UPDATE SET game_id = EXCLUDED.game_id", 
+                (str(party_id), game_id))
     conn.commit()
 
-# Add new function to store game results
+# Update the store_game_result function to return the inserted ID
 def store_game_result(party_id, result_type, amount=None, bonus_plan_id=None):
     cur.execute(
         """
         INSERT INTO game_results (party_id, result_type, amount, bonus_plan_id) 
         VALUES (%s, %s, %s, %s)
+        RETURNING id
         """,
         (str(party_id), result_type, amount, bonus_plan_id)
     )
+    result = cur.fetchone()
     conn.commit()
+    return result[0] if result else None
 
 # Function to unpad the decrypted data (PKCS7 padding)
 def unpad(data):
@@ -119,11 +131,11 @@ GAME_SEGMENTS = [
     {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 14747}
 ]
 
-# Update the WHEEL_SEGMENTS to match the wheel's visual layout
+# Update the WHEEL_SEGMENTS to include 150TL prize
 WHEEL_SEGMENTS = [
-    {'position': 0, 'type': 'win', 'text': 'Win 100TL Bonus', 'amount': 100, 'planId': 14747},
-    {'position': 1, 'type': 'lose', 'text': 'Ödül Kazanamadınız'},
-    {'position': 2, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 14747},
+    {'position': 0, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747},
+    {'position': 1, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747},
+    {'position': 2, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747},
     {'position': 3, 'type': 'lose', 'text': 'Ödül Kazanamadınız'}
 ]
 
@@ -485,7 +497,7 @@ def spin():
         # Store result in database first
         if winning_segment['type'] == 'win':
             print(f"WIN result: {winning_segment['amount']}TL")
-            store_game_result(
+            game_id = store_game_result(
                 party_id=party_id,
                 result_type='win',
                 amount=winning_segment['amount'],
@@ -540,7 +552,7 @@ def spin():
                 api_message = "Error processing bonus. Please contact support."
         else:
             print("LOSE result")
-            store_game_result(
+            game_id = store_game_result(
                 party_id=party_id,
                 result_type='lose',
                 amount=None,
@@ -549,8 +561,8 @@ def spin():
             api_success = True
             api_message = winning_segment['text']
 
-        # Mark as played
-        store_party_id(party_id)
+        # Mark as played with the game_id
+        store_party_id(party_id, game_id)
         session['can_play'] = False
 
         # Return success response with the correct message
