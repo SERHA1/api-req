@@ -473,38 +473,52 @@ def spin():
                 "redirect_url": "https://www.bhspwa41.com/tr/"
             })
 
-        # Directly assign the visual end position first (where the wheel will visually stop)
-        # 0: Red (Ödül Kazanamadınız)
-        # 1: Light Green (100TL)
-        # 2: Medium Green (150TL)
-        # 3: Dark Green (250TL)
+        # NEW APPROACH: Fixed mapping from visual_index to segment data
+        # First, decide where the wheel should visually stop
         visual_index = random.randint(0, 3)
         
-        # Map visual index to the corresponding segment data
-        # These MUST match the exact order shown in the wheel HTML
-        segments = [
-            {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},          # Red segment (top-right)
-            {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},  # Light green (right-bottom)
-            {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green'}, # Medium green (bottom-left)
-            {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green'}    # Dark green (left-top)
-        ]
+        # Fixed mapping of rotation angles to segments
+        # The wheel has text labels in this order:
+        # [0]: "Ödül Kazanamadınız" (Red)
+        # [1]: "100TL Ödül Kazandınız" (Light Green)
+        # [2]: "150TL Ödül Kazandınız" (Medium Green)
+        # [3]: "250TL Ödül Kazandınız" (Dark Green)
         
-        winning_segment = segments[visual_index]
+        # Map each index to its exact data
+        segment_map = {
+            0: {'position': 0, 'type': 'lose', 'text': 'Ödül Kazanamadınız', 'color': 'Red'},
+            1: {'position': 1, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747, 'color': 'Light Green'},
+            2: {'position': 2, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747, 'color': 'Medium Green'},
+            3: {'position': 3, 'type': 'win', 'text': '250TL Ödül Kazandınız', 'amount': 250, 'planId': 14747, 'color': 'Dark Green'}
+        }
         
-        # Calculate rotation to ensure the wheel stops at the selected visual segment
-        # Each segment is 90 degrees wide (360° ÷ 4)
-        # We want to stop at the middle of the segment (45° into the segment)
-        segment_center = visual_index * 90 + 45
-
-        # Add random full rotations for effect (5-8 full rotations)
+        # Get the winning segment data
+        winning_segment = segment_map[visual_index]
+        
+        # Calculate the exact rotation angle to stop at the pointer
+        # The wheel rotates clockwise, segments are 90 degrees each
+        # We want to stop in the middle of the segment
+        rotation_angles = {
+            0: 45,    # Red (pointer at top, red segment)
+            1: 135,   # Light Green (pointer at top, green segment)
+            2: 225,   # Medium Green (pointer at top, medium green segment)
+            3: 315    # Dark Green (pointer at top, dark green segment)
+        }
+        
+        # Get the rotation angle needed
+        segment_center = rotation_angles[visual_index]
+        
+        # Add random full rotations for effect (5-8 rotations)
         full_rotations = random.randint(5, 8) * 360
         final_rotation = full_rotations + segment_center
-
-        print(f"Segment center: {segment_center}° (middle of segment {visual_index})")
+        
+        print(f"Selected visual_index: {visual_index}")
+        print(f"Selected segment: {winning_segment['text']}")
+        print(f"Segment position: {segment_center}° (middle of segment {visual_index})")
         print(f"Final rotation: {final_rotation}°")
         print(f"Final position after rotation: {final_rotation % 360}°")
         
-        # Process result based on the visual segment
+        # Process result based on the winning segment
         if winning_segment['type'] == 'win':
             print(f"WIN result: {winning_segment['amount']}TL")
             game_id = store_game_result(
