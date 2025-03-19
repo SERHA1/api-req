@@ -496,6 +496,10 @@ def spin():
         full_spins = random.randint(5, 8) * 360
         final_rotation = full_spins + segment_center
         
+        print(f"Segment colors: Red=0, Green=1, Yellow=2, Blue=3")
+        print(f"Selected segment index: {winning_index}")
+        print(f"Selected segment color: {['Red', 'Green', 'Yellow', 'Blue'][winning_index]}")
+        print(f"Selected segment text: {winning_segment['text']}")
         print(f"Final rotation: {final_rotation} degrees")
         print(f"Final position after rotation: {final_rotation % 360}")
 

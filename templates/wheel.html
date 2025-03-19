@@ -31,10 +31,10 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
             overflow: hidden;
             background: conic-gradient(
-                #F97C7C 0deg 90deg,    /* Red for no award */
-                #A6D8B3 90deg 180deg,  /* Light green for 100TL */
-                #7CD0C0 180deg 270deg, /* Medium green for 150TL */
-                #5EAED0 270deg 360deg  /* Dark green for 250TL */
+                #FF5252 0deg 90deg,    /* Bright Red for no award */
+                #4CAF50 90deg 180deg,  /* Green for 100TL */
+                #FFEB3B 180deg 270deg, /* Yellow for 150TL */
+                #2196F3 270deg 360deg  /* Blue for 250TL */
             );
         }
         
@@ -204,7 +204,6 @@
                     wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
                     
                     // Rotate the wheel to the final position
-                    // We need to add an offset to ensure it stops at the center of the segment
                     wheel.style.transform = `rotate(${data.rotation}deg)`;
                     
                     console.log("Wheel rotation applied:", data.rotation);
