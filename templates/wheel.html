@@ -31,10 +31,10 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
             overflow: hidden;
             background: conic-gradient(
-                #A6D8B3 0deg 90deg,    /* Light green for 100TL */
-                #7CD0C0 90deg 180deg,  /* Medium green for 150TL */
-                #5EAED0 180deg 270deg, /* Dark green for 250TL */
-                #F97C7C 270deg 360deg  /* Red for no award */
+                #F97C7C 0deg 90deg,    /* Red for no award */
+                #A6D8B3 90deg 180deg,  /* Light green for 100TL */
+                #7CD0C0 180deg 270deg, /* Medium green for 150TL */
+                #5EAED0 270deg 360deg  /* Dark green for 250TL */
             );
         }
         
@@ -155,10 +155,10 @@
     <div class="wheel-container">
         <div class="pointer"></div>
         <div class="wheel" id="wheel">
+            <div class="text-label">Ödül Kazanamadınız</div>
             <div class="text-label">100TL Ödül Kazandınız</div>
             <div class="text-label">150TL Ödül Kazandınız</div>
             <div class="text-label">250TL Ödül Kazandınız</div>
-            <div class="text-label">Ödül Kazanamadınız</div>
             <div class="wheel-center"></div>
         </div>
     </div>

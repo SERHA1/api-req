@@ -131,7 +131,7 @@ GAME_SEGMENTS = [
     {'position': 3, 'type': 'win', 'text': 'Win 250TL Bonus', 'amount': 250, 'planId': 14747}
 ]
 
-# Update the WHEEL_SEGMENTS to include 150TL prize
+# Update the WHEEL_SEGMENTS to match the new visual layout
 WHEEL_SEGMENTS = [
     {'position': 0, 'type': 'win', 'text': '100TL Ödül Kazandınız', 'amount': 100, 'planId': 14747},
     {'position': 1, 'type': 'win', 'text': '150TL Ödül Kazandınız', 'amount': 150, 'planId': 14747},
@@ -482,12 +482,11 @@ def spin():
         print(f"Selected segment position: {winning_segment['position']}, type: {winning_segment['type']}, text: {winning_segment['text']}")
 
         # Define the segment angles based on the wheel's visual layout
-        # These angles represent where the wheel should stop to point to each segment
         segment_angles = {
-            0: 45,    # "100TL Ödül Kazandınız" - top-left (light green)
-            1: 135,   # "150TL Ödül Kazandınız" - top-right (medium green)
-            2: 225,   # "250TL Ödül Kazandınız" - bottom-right (dark green)
-            3: 315    # "Ödül Kazanamadınız" - bottom-left (red)
+            0: 315,  # "100TL Ödül Kazandınız" - top-right (light green)
+            1: 225,  # "150TL Ödül Kazandınız" - bottom-right (medium green)
+            2: 135,  # "250TL Ödül Kazandınız" - bottom-left (dark green)
+            3: 45    # "Ödül Kazanamadınız" - top-left (red)
         }
 
         # Calculate final rotation to ensure it stops at the correct position
