@@ -465,14 +465,24 @@ def spin():
         winning_segment = random.choice(WHEEL_SEGMENTS)
         print(f"Selected segment: {winning_segment}")
         
-        # Calculate final rotation to ensure it stops at the correct segment
-        full_spins = random.randint(5, 8) * 360  # 5-8 full rotations
-        segment_angle = winning_segment['position'] * 90  # Each segment is 90 degrees
-        final_rotation = full_spins + segment_angle + 45  # +45 to point to center of segment
-        print(f"Final rotation: {final_rotation}")
+        # Calculate final rotation - FIXED CALCULATION
+        # Each segment is 90 degrees, and we want to point to the center of the segment
+        # Position 0 = 45°, Position 1 = 135°, Position 2 = 225°, Position 3 = 315°
+        segment_angles = {
+            0: 45,    # "Sorry No Award"
+            1: 135,   # "100TL Bonus"
+            2: 225,   # "Sorry No Award"
+            3: 315    # "250TL Bonus"
+        }
+        
+        # 5-8 full rotations plus the angle to the center of the segment
+        full_spins = random.randint(5, 8) * 360
+        final_rotation = full_spins + segment_angles[winning_segment['position']]
+        print(f"Final rotation: {final_rotation} degrees for position {winning_segment['position']}")
 
         # Store result in database
         if winning_segment['type'] == 'win':
+            print(f"WIN result: {winning_segment['amount']}TL")
             store_game_result(
                 party_id=party_id,
                 result_type='win',
@@ -511,6 +521,7 @@ def spin():
                 print(f"Bonus API failed with status {response.status_code}: {response.text}")
                 raise Exception("Bonus API request failed")
         else:
+            print("LOSE result")
             store_game_result(
                 party_id=party_id,
                 result_type='lose',
@@ -522,7 +533,7 @@ def spin():
         store_party_id(party_id)
         session['can_play'] = False
 
-        # Return success response
+        # Return success response with the correct message
         print(f"Returning success response with message: {winning_segment['text']}")
         return jsonify({
             "success": True,
