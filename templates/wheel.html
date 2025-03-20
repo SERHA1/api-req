@@ -2,24 +2,28 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fortune Wheel</title>
     <style>
         body {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             flex-direction: column;
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
             user-select: none;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
         
         .wheel-container {
             position: relative;
-            width: 400px;
-            height: 400px;
-            margin: 20px;
+            width: min(400px, 90vw);
+            height: min(400px, 90vw);
+            margin: 20px auto;
         }
         
         .wheel {
@@ -58,8 +62,8 @@
             color: white;
             font-weight: bold;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-            font-size: 18px;
-            width: 120px;
+            font-size: clamp(12px, 4vw, 18px);
+            width: 30%;
             text-align: center;
             z-index: 5;
             transform-origin: center;
@@ -71,33 +75,33 @@
         
         /* Position text in the middle of each segment - adjusted for diagonal positioning */
         .text-label:nth-child(1) {
-            top: 90px;
-            left: 250px;
+            top: 22%;
+            left: 62%;
             transform: rotate(45deg);
         }
         
         .text-label:nth-child(2) {
-            top: 250px;
-            left: 250px;
+            top: 62%;
+            left: 58%;
             transform: rotate(135deg);
         }
         
         .text-label:nth-child(3) {
-            top: 250px;
-            left: 50px;
+            top: 62%;
+            left: 12%;
             transform: rotate(-135deg);
         }
         
         .text-label:nth-child(4) {
-            top: 90px;
-            left: 50px;
+            top: 22%;
+            left: 12%;
             transform: rotate(-45deg);
         }
         
         .wheel-center {
             position: absolute;
-            width: 40px;
-            height: 40px;
+            width: 10%;
+            height: 10%;
             background: #333;
             border-radius: 50%;
             top: 50%;
@@ -128,6 +132,7 @@
             cursor: pointer;
             margin-top: 20px;
             transition: background-color 0.3s;
+            width: min(200px, 80%);
         }
         
         .spin-button:hover:not(:disabled) {
@@ -140,7 +145,7 @@
         }
         
         .result-message {
-            font-size: 24px;
+            font-size: clamp(18px, 5vw, 24px);
             margin-top: 20px;
             text-align: center;
             display: none;
@@ -148,6 +153,28 @@
             border-radius: 10px;
             background: rgba(255,255,255,0.9);
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: min(400px, 90%);
+        }
+        
+        /* Media queries for better mobile responsiveness */
+        @media (max-height: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .wheel-container {
+                margin: 10px auto;
+            }
+            
+            .spin-button {
+                margin-top: 10px;
+                padding: 10px 20px;
+            }
+            
+            .result-message {
+                margin-top: 10px;
+                padding: 15px;
+            }
         }
     </style>
 </head>
