@@ -253,9 +253,11 @@ def process_game_result():
 
 def generate_html_response(message, redirect_url):
     return f"""
-    <html>
+    <!DOCTYPE html>
+    <html lang="tr">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Yönlendiriliyor...</title>
         <script>
             let countdown = 5;
@@ -271,6 +273,11 @@ def generate_html_response(message, redirect_url):
             window.onload = updateCountdown;
         </script>
         <style>
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
             body {{
                 display: flex;
                 justify-content: center;
@@ -278,6 +285,13 @@ def generate_html_response(message, redirect_url):
                 height: 100vh;
                 flex-direction: column;
                 font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 20px;
+                background-color: #f8f9fa;
+            }}
+            h2 {{
+                font-size: 1.5rem;
+                color: #333;
             }}
             .circle {{
                 width: 80px;
@@ -291,6 +305,17 @@ def generate_html_response(message, redirect_url):
                 font-size: 24px;
                 font-weight: bold;
                 margin-top: 20px;
+                transition: transform 0.3s ease;
+            }}
+            @media (max-width: 600px) {{
+                h2 {{
+                    font-size: 1.2rem;
+                }}
+                .circle {{
+                    width: 60px;
+                    height: 60px;
+                    font-size: 20px;
+                }}
             }}
         </style>
     </head>
